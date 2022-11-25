@@ -32,7 +32,7 @@ class Board:
 
     def get_pawn_pushes(self):
         """ Returns an array of legal pawn moves, based on whose
-            turn it is (self.turn)
+            turn it is (self.turn).
         """
         moves = []
         if (self.turn == Side.WHITE):

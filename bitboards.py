@@ -150,7 +150,15 @@ def get_squares(board: int):
     """ Returns an array of square indices for all squares in a
         bitboard containing a "1"
     """
-    pass
+    indices = []
+    index = 0
+    while board > 0:
+        if board % 2 == 1:
+            indices.append(index)
+        index = index + 1
+        board = board >> 1
+
+    return indices
 
 # Invert a bitboard
 def invert(board: int):
