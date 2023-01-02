@@ -3,6 +3,32 @@
 from . import squares
 from . import consts
 
+# Direction Class
+class Direction:
+    """ Direction enum. Values correspond to the index shift in
+        that direction - this assumes the translation is valid (i.e.,
+        you aren't trying to shift off the board).
+    """
+    # Orthogonal
+    NORTH =  8
+    EAST  =  1
+    SOUTH = -8
+    WEST  = -1
+    # Diagonal
+    NEAST = NORTH + EAST
+    NWEST = NORTH + WEST
+    SEAST = SOUTH + EAST
+    SWEST = SOUTH + WEST
+    # Extended
+    NNEAST = NORTH + NORTH + EAST
+    NEEAST = NORTH + EAST  + EAST
+    NNWEST = NORTH + NORTH + WEST
+    NWWEST = NORTH + WEST  + WEST
+    SSEAST = SOUTH + SOUTH + EAST
+    SEEAST = SOUTH + EAST  + EAST
+    SSWEST = SOUTH + SOUTH + WEST
+    SWWEST = SOUTH + WEST  + WEST
+
 # Helper functions
 def get_rank(idx: int):
     """ Returns a bitboard representing the rank on which
@@ -59,7 +85,7 @@ def invert(board: int):
     """ Inverts a bitboard (i.e., changes all ones to zeros
         and vice versa).
     """
-    return board ^ consts.FILLED
+    return (board & consts.FILLED) ^ consts.FILLED
 
 # Delta swap function
 def delta_swap(board, mask, delta):
@@ -82,39 +108,80 @@ def delta_swap(board, mask, delta):
     temp  = mask  & (board ^ (board >> delta))
     return  board ^ (temp  ^ (temp  << delta))
 
-# Orthogonal Translations. East and West translations remove 
+# Bitboard Translations. East and West translations remove 
 # any bits that would wrap (e.g., from h1 to a2 when shifting 
 # east). North translation removes any bits beyond the 64th.
 def north(board: int, times=1):
+    """ Shifts a bitboard north, stripping bits beyond the 64th.
+    """
     return (board << (8 * times)) & consts.FILLED
 
 def east(board: int, times=1):
+    """ Shifts a bitboard east, preventing wrapping.
+    """
     result = board
     for _ in range(times):
         result = (result & invert(consts.FILE_H)) << 1
     return result
 
 def south(board: int, times=1):
+    """ Shifts a bitboard south.
+    """
     return board >> (8 * times)
 
 def west(board: int, times=1):
+    """ Shifts a bitboard west, preventing wrapping.
+    """
     result = board
     for _ in range(times):
         result = (result & invert(consts.FILE_A)) >> 1
     return result
 
-# Diagonal Translations
+# Diagonal Bitboard Translations
 def neast(board: int, times=1):
+    """ Shifts a bitboard north-east, stripping bits beyond the 64th
+        and preventing wrapping.
+    """
     return north(east(board, times), times)
 
 def nwest(board: int, times=1):
+    """ Shifts a bitboard north-west, stripping bits beyond the 64th
+        and preventing wrapping.
+    """
     return north(west(board, times), times)
 
 def seast(board: int, times=1):
+    """ Shifts a bitboard south-east, preventing wrapping.
+    """
     return south(east(board, times), times)
     
 def swest(board: int, times=1):
+    """ Shifts a bitboard south-west, preventing wrapping.
+    """
     return south(west(board, times), times)
+
+def translate(board: int, direction: Direction, times: int=1):
+    """ Generalised translation function for ease of use. Calls one
+        of the translation functions above based on the direction parameter.
+    """
+    # Orthogonal Translations
+    if direction == Direction.NORTH:
+        return north(board, times)
+    elif direction == Direction.EAST:
+        return east(board, times)
+    elif direction == Direction.SOUTH:
+        return south(board, times)
+    elif direction == Direction.WEST:
+        return west(board, times)
+    # Diagonal Translations
+    elif direction == Direction.NEAST:
+        return neast(board, times)
+    elif direction == Direction.NWEST:
+        return nwest(board, times)
+    elif direction == Direction.SEAST:
+        return seast(board, times)
+    elif direction == Direction.SWEST:
+        return swest(board, times)
 
 # Flips, mirrors and rotations
 # Adapted from: https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating

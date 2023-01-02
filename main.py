@@ -1,5 +1,5 @@
-from board import Board
-from bitboards import *
+from chess.board import Board
+from chess import *
 
 def main():
     pretty_print(flip_diagonal_a1h8(TEST_R_SHAPE))

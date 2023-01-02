@@ -3,6 +3,8 @@
 from . import consts
 from . import squares
 from . import utils
+from . import pieces
+from . import sides
 
 # Move generation
 # Precalculated move arrays
@@ -18,7 +20,7 @@ def _generate_pawn_capture_templates():
         square = squares.masks[idx]
         white.append(utils.nwest(square) | utils.neast(square))
         black.append(utils.swest(square) | utils.seast(square))
-    return { 'white': white, 'black': black }
+    return { sides.Side.WHITE: white, sides.Side.BLACK: black }
 PAWN_CAPTURE_TEMPLATES = _generate_pawn_capture_templates()
 
 # Knight move templates
@@ -81,3 +83,66 @@ def _generate_rook_templates():
         )
     return result
 ROOK_TEMPLATES = _generate_rook_templates()
+
+# Move class
+class Move:
+    """ Holds the from/to square indices of a move, 
+        promoted piece, and any other relevant information.
+    """
+    def __init__(self, from_index: int=None, to_index: int=None, algebraic: str=None, promotion: pieces.Piece=None):
+        self.from_square = None
+        self.to_square = None
+        self.from_mask = None
+        self.to_mask = None
+        self.from_mask_inv = None
+        self.to_mask_inv = None
+        self.promotion = None
+
+        if from_index and to_index:
+            self.from_square = from_index
+            self.to_square   = to_index
+        elif algebraic:
+            self.from_square = squares.labels.index(algebraic[:2])
+            self.to_square   = squares.labels.index(algebraic[2:])
+        else:
+            self.from_square = 0
+            self.to_square = 0
+        
+        self.from_mask = squares.masks[self.from_square]
+        self.to_mask = squares.masks[self.to_square]
+        self.from_mask_inv = utils.invert(self.from_mask)
+        self.to_mask_inv = utils.invert(self.to_mask)
+        
+        if promotion:
+            self.promotion = promotion
+
+    def apply(self, bitboard: int):
+        """ Apply this move to the provided bitboard.
+        """
+        # If the provided bitboard contains the moving piece...
+        if bitboard & self.from_mask:
+            # ... remove the piece from the bitboard...
+            bitboard = bitboard & self.from_mask_inv
+            # ... and add it back in the new position...
+            bitboard = bitboard | self.to_mask
+        # ... otherwise, zero the bit in the new position.
+        else:
+            bitboard = bitboard & self.to_mask_inv
+        return bitboard
+    
+    def revert(self, bitboard: int):
+        """ Revert the effect of this move on the provided bitboard.
+        """
+        # If the provided bitboard contains the moved piece
+        if bitboard & self.to_mask:
+            # ... remove the piece from the bitboard...
+            bitboard = bitboard & self.to_mask_inv
+            # ... and add it back to its original position...
+            bitboard = bitboard | self.from_mask
+        # ... otherwise, zero the bit in the original position.
+        else:
+            bitboard = bitboard & self.from_mask_inv
+        return bitboard
+
+    def __str__(self):
+        return f"{squares.labels[self.from_square]}{squares.labels[self.to_square]}"
