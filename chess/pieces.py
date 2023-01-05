@@ -3,9 +3,28 @@
 from enum import Enum
 
 class Piece(Enum):
-    PAWN = 0
-    KNIGHT = 1
-    BISHOP = 2
-    ROOK = 3
-    QUEEN = 4
-    KING = 5
+    PAWN = "P"
+    KNIGHT = "N"
+    BISHOP = "B"
+    ROOK = "R"
+    QUEEN = "Q"
+    KING = "K"
+
+symbols = {
+    "white": {
+        Piece.PAWN: "P",
+        Piece.KNIGHT: "N",
+        Piece.BISHOP: "B",
+        Piece.ROOK: "R",
+        Piece.QUEEN: "Q",
+        Piece.KING: "K"
+    },
+    "black": {
+        Piece.PAWN: "p",
+        Piece.KNIGHT: "n",
+        Piece.BISHOP: "b",
+        Piece.ROOK: "r",
+        Piece.QUEEN: "q",
+        Piece.KING: "k"
+    }
+}
