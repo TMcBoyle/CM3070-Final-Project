@@ -6,15 +6,17 @@ from . import utils
 from . import pieces
 from . import sides
 
+from enum import Enum
+
 # Castling rights enum
-class Castling:
+class Castling(Enum):
     WHITE_KINGSIDE = 0
     WHITE_QUEENSIDE = 1
     BLACK_KINGSIDE = 0
     BLACK_QUEENSIDE = 1
 
 # Move types enum
-class MoveType:
+class MoveType(Enum):
     PAWN_SINGLE = 0
     PAWN_DOUBLE = 1
     PAWN_CAPTURE = 2
@@ -26,6 +28,7 @@ class MoveType:
     KING = 8
     CASTLE_KINGSIDE = 9
     CASTLE_QUEENSIDE = 10
+    DUCK = 11
 
 # Move class
 class Move:
@@ -40,6 +43,7 @@ class Move:
             move_type: MoveType=None,
             promotion: pieces.Piece=None
         ):
+        self.algebraic = None
         self.from_square = None
         self.to_square = None
         self.from_mask = None
@@ -49,26 +53,37 @@ class Move:
         self.move_type = move_type
         self.promotion = promotion
 
-        if from_index and to_index:
-            self.from_square = from_index
-            self.to_square   = to_index
-        elif algebraic:
-            self.from_square = squares.labels.index(algebraic[:2])
-            self.to_square   = squares.labels.index(algebraic[2:])
+        if algebraic:
+            self.algebraic = algebraic
+            if algebraic.startswith("@"):
+                self.from_square = None
+                self.to_square = squares.labels.index(algebraic[1:])
+            else:
+                self.from_square = squares.labels.index(algebraic[:2])
+                self.to_square   = squares.labels.index(algebraic[2:])
         else:
-            self.from_square = 0
-            self.to_square = 0
-        
-        self.from_mask = squares.masks[self.from_square]
-        self.to_mask = squares.masks[self.to_square]
-        self.from_mask_inv = utils.invert(self.from_mask)
-        self.to_mask_inv = utils.invert(self.to_mask)
+            self.from_square = from_index
+            self.to_square = to_index
+            if move_type == MoveType.DUCK:
+                self.algebraic = f"@{squares.labels[to_index]}"
+            else:
+                self.algebraic = f"{squares.labels[from_index]}{squares.labels[to_index]}"
+
+        if self.from_square is not None:
+            self.from_mask = squares.masks[self.from_square]
+            self.from_mask_inv = utils.invert(self.from_mask)
+
+        if self.to_square is not None:
+            self.to_mask = squares.masks[self.to_square]
+            self.to_mask_inv = utils.invert(self.to_mask)
 
     def apply(self, bitboard: int):
         """ Apply this move to the provided bitboard.
         """
+        if not self.from_mask:
+            bitboard = bitboard | self.to_mask
         # If the provided bitboard contains the moving piece...
-        if bitboard & self.from_mask:
+        elif bitboard & self.from_mask:
             # ... remove the piece from the bitboard...
             bitboard = bitboard & self.from_mask_inv
             # ... and add it back in the new position...
@@ -92,10 +107,15 @@ class Move:
             bitboard = bitboard & self.from_mask_inv
         return bitboard
 
+    def __eq__(self, other: "Move"):
+        if not isinstance(other, Move):
+            return False
+        else:
+            return self.algebraic == other.algebraic
+        
     def __str__(self):
         return (
-            f"{squares.labels[self.from_square]}"
-            f"{squares.labels[self.to_square]}"
+            f"{self.algebraic}"
             f"{'=' + self.promotion.value if self.promotion else ''}"
         )
 
@@ -140,7 +160,7 @@ KNIGHT_TEMPLATES = _generate_knight_templates()
 # King move templates
 def _generate_king_templates():
     result = []
-    for idx in range(0, 63):
+    for idx in range(0, 64):
         square = squares.masks[idx]
         result.append(
               utils.north(square) | utils.east(square)  \
@@ -155,7 +175,7 @@ KING_TEMPLATES = _generate_king_templates()
 # an empty board
 def _generate_bishop_templates():
     result = []
-    for idx in range(0, 63):
+    for idx in range(0, 64):
         square = squares.masks[idx]
         diagonal = utils.get_diagonal(idx)
         antidiag = utils.get_antidiagonal(idx)
@@ -169,7 +189,7 @@ BISHOP_TEMPLATES = _generate_bishop_templates()
 # an empty board
 def _generate_rook_templates():
     result = []
-    for idx in range(0, 63):
+    for idx in range(0, 64):
         square = squares.masks[idx]
         file = utils.get_file(idx)
         rank = utils.get_rank(idx)
@@ -410,9 +430,27 @@ def king_moves(origins: int, occupation: int, blockers: int):
         for target in utils.get_squares(targets):
             king_moves.append(
                 Move(
-                    from_index = king,
+                    from_index=king,
                     to_index=target,
                     move_type=MoveType.KING
                 )
             )
     return king_moves
+
+# Duck move generation
+def duck_moves(origin, occupation):
+    """ Generates valid duck moves, taking into account its current
+        position and board occupation.
+    """
+    duck_moves = []
+    if origin:
+        origin = utils.get_squares(origin)[0]
+    for target in utils.get_squares(utils.invert(occupation)):
+        duck_moves.append(
+            Move(
+                from_index=origin,
+                to_index=target,
+                move_type=MoveType.DUCK
+            )
+        )
+    return duck_moves

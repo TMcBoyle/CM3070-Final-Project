@@ -1,7 +1,5 @@
 """ Chessboard representation implementation
 """
-import copy
-
 from . import consts
 from . import utils
 from . import moves
@@ -9,6 +7,12 @@ from . import sides
 from . import squares
 
 from enum import Enum
+
+class GameState(Enum):
+    ONGOING = 0
+    WHITE_WINS = 1
+    BLACK_WINS = 2
+    STALEMATE = 3
 
 class Board:
     def __init__(self):
@@ -42,8 +46,8 @@ class Board:
                 "king":    consts.INIT_BLACK_KING,
                 "all":     consts.INIT_BLACK_PIECES
             },
-            sides.Side.DUCK: {
-                "duck": consts.INIT_DUCK
+            "duck": {
+                "duck": None
             }
         }
 
@@ -59,11 +63,20 @@ class Board:
             }
         }
         self.turn = sides.Side.WHITE
+        self.duck_turn = False
+        self.terminal = GameState.ONGOING
+
+    def check_game_end(self):
+        if self.pieces[sides.Side.WHITE]["king"] == consts.EMPTY:
+            self.terminal = GameState.BLACK_WINS
+        elif self.pieces[sides.Side.BLACK]["king"] == consts.EMPTY:
+            self.terminal = GameState.WHITE_WINS
+        return self.terminal
 
     def occupied(self):
         return    self.pieces[sides.Side.WHITE]["all"] \
                 | self.pieces[sides.Side.BLACK]["all"] \
-                | self.pieces[sides.Side.DUCK]["duck"]
+                | self.pieces["duck"]["duck"] if self.pieces["duck"]["duck"] else consts.EMPTY
 
     def empty(self):
         return utils.invert(self.occupied())
@@ -71,20 +84,33 @@ class Board:
     def make_move(self, move: moves.Move):
         """ Returns a copy of this board with the provided move applied.
         """
-        # Change turn
-        self.turn = sides.alternate(self.turn)
+        # Change turn if necessary and update mailbox
+        if move.move_type == moves.MoveType.DUCK:
+            self.turn = sides.advance_turn(self.turn)
+            if '@' in self.mailbox:
+                self.mailbox[self.mailbox.index('@')] = '.'
+            self.mailbox[move.to_square] = '@'
+        else:
+            self.mailbox[move.to_square] = self.mailbox[move.from_square]
+            self.mailbox[move.from_square] = '.'
+        
+        if move.move_type == moves.MoveType.DUCK:
+            self.pieces["duck"]["duck"] = move.to_mask
+        else:
+            for side in self.pieces:
+                if side == "duck":
+                    continue
+                for piece in self.pieces[side]:
+                    self.pieces[side][piece] = move.apply(self.pieces[side][piece])
 
-        # Update mailbox
-        self.mailbox[move.to_square] = self.mailbox[move.from_square]
-        self.mailbox[move.from_square] = '.'
-
-        for side in self.pieces:
-            for piece in self.pieces[side]:
-                self.pieces[side][piece] = move.apply(self.pieces[side][piece])
+        self.duck_turn = not self.duck_turn
 
     def get_legal_moves(self):
         """ Returns a list of legal moves for the current side.
         """
+        if self.duck_turn:
+            return self.get_duck_moves()
+
         occupation = self.occupied()
 
         pieces = self.pieces[self.turn]
@@ -109,8 +135,14 @@ class Board:
         
         return legal_moves
 
+    def get_duck_moves(self):
+        duck = self.pieces["duck"]["duck"]
+        duck_moves = moves.duck_moves(duck, self.occupied())
+        return duck_moves
+
     def __str__(self):
-        result = f'{"White" if self.turn == sides.Side.WHITE else "Black"} to move.\n'
+        result = ""
         for s in range(len(self.mailbox), 0, -8):
-            result += ''.join(self.mailbox[s-8:s]) + '\n'
+            result += f"{s//8}|" + ''.join(self.mailbox[s-8:s]) + '\n' 
+        result += " +--------\n  ABCDEFGH"
         return result.strip('\n')
