@@ -4,6 +4,7 @@ from . import consts
 from . import utils
 from . import moves
 from . import sides
+from . import pieces
 from . import squares
 
 from enum import Enum
@@ -16,94 +17,115 @@ class GameState(Enum):
 
 class Board:
     def __init__(self):
-        self.mailbox = [
-            'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R', 
-            'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P',
-            '.', '.', '.', '.', '.', '.', '.', '.',
-            '.', '.', '.', '.', '.', '.', '.', '.',
-            '.', '.', '.', '.', '.', '.', '.', '.',
-            '.', '.', '.', '.', '.', '.', '.', '.', 
-            'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p',
-            'r', 'n', 'b', 'q', 'k', 'b', 'n', 'r',
-        ]
-
-        self.pieces = {
+        self.bitboards = {
             sides.Side.WHITE: {
-                "pawns":   consts.INIT_WHITE_PAWNS,
-                "knights": consts.INIT_WHITE_KNIGHTS,
-                "bishops": consts.INIT_WHITE_BISHOPS,
-                "rooks":   consts.INIT_WHITE_ROOKS,
-                "queens":  consts.INIT_WHITE_QUEENS,
-                "king":    consts.INIT_WHITE_KING,
-                "all":     consts.INIT_WHITE_PIECES
+                pieces.Piece.PAWN:   consts.INIT_WHITE_PAWNS,
+                pieces.Piece.KNIGHT: consts.INIT_WHITE_KNIGHTS,
+                pieces.Piece.BISHOP: consts.INIT_WHITE_BISHOPS,
+                pieces.Piece.ROOK:   consts.INIT_WHITE_ROOKS,
+                pieces.Piece.QUEEN:  consts.INIT_WHITE_QUEENS,
+                pieces.Piece.KING:   consts.INIT_WHITE_KING,
+                "all": consts.INIT_WHITE_PIECES
             },
             sides.Side.BLACK: {
-                "pawns":   consts.INIT_BLACK_PAWNS,
-                "knights": consts.INIT_BLACK_KNIGHTS,
-                "bishops": consts.INIT_BLACK_BISHOPS,
-                "rooks":   consts.INIT_BLACK_ROOKS,
-                "queens":  consts.INIT_BLACK_QUEENS,
-                "king":    consts.INIT_BLACK_KING,
-                "all":     consts.INIT_BLACK_PIECES
+                pieces.Piece.PAWN:   consts.INIT_BLACK_PAWNS,
+                pieces.Piece.KNIGHT: consts.INIT_BLACK_KNIGHTS,
+                pieces.Piece.BISHOP: consts.INIT_BLACK_BISHOPS,
+                pieces.Piece.ROOK:   consts.INIT_BLACK_ROOKS,
+                pieces.Piece.QUEEN:  consts.INIT_BLACK_QUEENS,
+                pieces.Piece.KING:   consts.INIT_BLACK_KING,
+                "all": consts.INIT_BLACK_PIECES
             },
             "duck": {
-                "duck": None
+                pieces.Piece.DUCK: consts.INIT_DUCK
             }
         }
 
         self.en_passant = consts.EMPTY
-        self.castle_rights = {
-            sides.Side.WHITE: {
-                squares.a1: True,
-                squares.h1: True
-            },
-            sides.Side.BLACK: {
-                squares.a8: True,
-                squares.h8: True
-            }
-        }
         self.turn = sides.Side.WHITE
         self.duck_turn = False
+        self.castle_rights = {
+            sides.Side.WHITE: consts.INIT_WHITE_ROOKS,
+            sides.Side.BLACK: consts.INIT_BLACK_ROOKS
+        }
         self.terminal = GameState.ONGOING
 
+        self.update_mailbox()
+
     def check_game_end(self):
-        if self.pieces[sides.Side.WHITE]["king"] == consts.EMPTY:
+        if self.bitboards[sides.Side.WHITE][pieces.Piece.KING] == consts.EMPTY:
             self.terminal = GameState.BLACK_WINS
-        elif self.pieces[sides.Side.BLACK]["king"] == consts.EMPTY:
+        elif self.bitboards[sides.Side.BLACK][pieces.Piece.KING] == consts.EMPTY:
             self.terminal = GameState.WHITE_WINS
         return self.terminal
 
     def occupied(self):
-        return    self.pieces[sides.Side.WHITE]["all"] \
-                | self.pieces[sides.Side.BLACK]["all"] \
-                | self.pieces["duck"]["duck"] if self.pieces["duck"]["duck"] else consts.EMPTY
+        return    self.bitboards[sides.Side.WHITE]["all"] \
+                | self.bitboards[sides.Side.BLACK]["all"] \
+                | (self.bitboards["duck"][pieces.Piece.DUCK] \
+                    if self.bitboards["duck"][pieces.Piece.DUCK] \
+                    else consts.EMPTY)
 
     def empty(self):
         return utils.invert(self.occupied())
 
+    def update_bitboard(self, bitboard: int, move: moves.Move):
+        """ Apply a move to a bitboard, returning an updated copy.
+        """
+        if move.from_mask is not None and move.to_mask is not None:
+            # If the bitboard contains the moving piece...
+            if bitboard & move.from_mask:
+                # ... move it to the new position...
+                bitboard = (bitboard & move.from_mask_inv) | move.to_mask
+            # ... otherwise, remove the piece in the destination square.
+            else:
+                bitboard &= move.to_mask_inv
+            return bitboard
+
     def make_move(self, move: moves.Move):
         """ Returns a copy of this board with the provided move applied.
         """
-        # Change turn if necessary and update mailbox
+        # Change turn if necessary
         if move.move_type == moves.MoveType.DUCK:
             self.turn = sides.advance_turn(self.turn)
-            if '@' in self.mailbox:
-                self.mailbox[self.mailbox.index('@')] = '.'
-            self.mailbox[move.to_square] = '@'
-        else:
-            self.mailbox[move.to_square] = self.mailbox[move.from_square]
-            self.mailbox[move.from_square] = '.'
         
+        # If this is a duck move, move the duck
         if move.move_type == moves.MoveType.DUCK:
-            self.pieces["duck"]["duck"] = move.to_mask
+            self.bitboards["duck"][pieces.Piece.DUCK] = move.to_mask
+        # If castling
+        elif move.move_type == moves.MoveType.CASTLE_KINGSIDE:
+            if self.turn == sides.Side.WHITE:
+                self.bitboards[self.turn][pieces.Piece.KING] ^= consts.CASTLING_WHITE_KINGSIDE_KING
+                self.bitboards[self.turn][pieces.Piece.ROOK] ^= consts.CASTLING_WHITE_KINGSIDE_ROOK
+            elif self.turn == sides.Side.BLACK:
+                self.bitboards[self.turn][pieces.Piece.KING] ^= consts.CASTLING_BLACK_KINGSIDE_KING
+                self.bitboards[self.turn][pieces.Piece.ROOK] ^= consts.CASTLING_BLACK_KINGSIDE_ROOK
+        elif move.move_type == moves.MoveType.CASTLE_QUEENSIDE:
+            if self.turn == sides.Side.WHITE:
+                self.bitboards[self.turn][pieces.Piece.KING] ^= consts.CASTLING_WHITE_QUEENSIDE_KING
+                self.bitboards[self.turn][pieces.Piece.ROOK] ^= consts.CASTLING_WHITE_QUEENSIDE_ROOK
+            elif self.turn == sides.Side.BLACK:
+                self.bitboards[self.turn][pieces.Piece.KING] ^= consts.CASTLING_BLACK_QUEENSIDE_KING
+                self.bitboards[self.turn][pieces.Piece.ROOK] ^= consts.CASTLING_BLACK_QUEENSIDE_ROOK
+        # Otherwise, update the other bitboards
         else:
-            for side in self.pieces:
+            for side in self.bitboards:
                 if side == "duck":
                     continue
-                for piece in self.pieces[side]:
-                    self.pieces[side][piece] = move.apply(self.pieces[side][piece])
+                for piece in self.bitboards[side]:
+                    self.bitboards[side][piece] = self.update_bitboard(
+                        self.bitboards[side][piece],
+                        move
+                    )
+            # Handle promotions
+            if move.move_type == moves.MoveType.PAWN_PROMOTION:
+                # Remove the pawn...
+                self.bitboards[self.turn][pieces.Piece.PAWN] &= move.to_mask_inv
+                # ... and replace it with the promoted piece
+                self.bitboards[self.turn][move.promotion] |= move.to_mask
 
         self.duck_turn = not self.duck_turn
+        self.update_mailbox()
 
     def get_legal_moves(self):
         """ Returns a list of legal moves for the current side.
@@ -113,32 +135,48 @@ class Board:
 
         occupation = self.occupied()
 
-        pieces = self.pieces[self.turn]
-        allies = pieces["all"]
-        enemies = occupation ^ allies
+        bitboards = self.bitboards[self.turn]
+        blockers = bitboards["all"] | self.bitboards["duck"][pieces.Piece.DUCK]
+        enemies = occupation ^ blockers
 
-        pawns   = pieces["pawns"]
-        knights = pieces["knights"]
-        bishops = pieces["bishops"]
-        rooks   = pieces["rooks"]
-        queens  = pieces["queens"]
-        king    = pieces["king"]
+        pawns   = bitboards[pieces.Piece.PAWN]
+        knights = bitboards[pieces.Piece.KNIGHT]
+        bishops = bitboards[pieces.Piece.BISHOP]
+        rooks   = bitboards[pieces.Piece.ROOK]
+        queens  = bitboards[pieces.Piece.QUEEN]
+        king    = bitboards[pieces.Piece.KING]
         
         legal_moves = []
         legal_moves += moves.pawn_pushes(pawns, occupation, self.turn)
         legal_moves += moves.pawn_captures(pawns, enemies, self.turn)
-        legal_moves += moves.knight_moves(knights, occupation, allies)
-        legal_moves += moves.bishop_moves(bishops, occupation, allies)
-        legal_moves += moves.rook_moves(rooks, occupation, allies)
-        legal_moves += moves.queen_moves(queens, occupation, allies)
-        legal_moves += moves.king_moves(king, occupation, allies)
+        legal_moves += moves.knight_moves(knights, occupation, blockers)
+        legal_moves += moves.bishop_moves(bishops, occupation, blockers)
+        legal_moves += moves.rook_moves(rooks, occupation, blockers)
+        legal_moves += moves.queen_moves(queens, occupation, blockers)
+        legal_moves += moves.king_moves(king, occupation, blockers)
+        legal_moves += moves.castling(
+            rooks, king, occupation, self.castle_rights[self.turn]
+        )
         
         return legal_moves
 
     def get_duck_moves(self):
-        duck = self.pieces["duck"]["duck"]
+        duck = self.bitboards["duck"][pieces.Piece.DUCK]
         duck_moves = moves.duck_moves(duck, self.occupied())
         return duck_moves
+
+    def update_mailbox(self):
+        """ Returns the current board state in mailbox format (i.e.,
+            a length 64 array with characters representing the pieces)
+        """
+        result = [' '] * 64
+        for side, group in self.bitboards.items():
+            for piece, bitboard in group.items():
+                if piece == "all":
+                    continue
+                for square in utils.get_squares(bitboard):
+                    result[square] = pieces.symbols[side][piece]
+        self.mailbox = result
 
     def __str__(self):
         result = ""

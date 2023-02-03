@@ -21,14 +21,15 @@ class MoveType(Enum):
     PAWN_DOUBLE = 1
     PAWN_CAPTURE = 2
     PAWN_PROMOTION = 3
-    KNIGHT = 4
-    BISHOP = 5
-    ROOK = 6
-    QUEEN = 7
-    KING = 8
-    CASTLE_KINGSIDE = 9
-    CASTLE_QUEENSIDE = 10
-    DUCK = 11
+    PAWN_CAPTURE_PROMOTION = 4
+    KNIGHT = 5
+    BISHOP = 6
+    ROOK = 7
+    QUEEN = 8
+    KING = 9
+    CASTLE_KINGSIDE = 10
+    CASTLE_QUEENSIDE = 11
+    DUCK = 12
 
 # Move class
 class Move:
@@ -66,6 +67,10 @@ class Move:
             self.to_square = to_index
             if move_type == MoveType.DUCK:
                 self.algebraic = f"@{squares.labels[to_index]}"
+            elif move_type == MoveType.CASTLE_KINGSIDE:
+                self.algebraic = "O-O"
+            elif move_type == MoveType.CASTLE_QUEENSIDE:
+                self.algebraic = "O-O-O"
             else:
                 self.algebraic = f"{squares.labels[from_index]}{squares.labels[to_index]}"
 
@@ -76,36 +81,6 @@ class Move:
         if self.to_square is not None:
             self.to_mask = squares.masks[self.to_square]
             self.to_mask_inv = utils.invert(self.to_mask)
-
-    def apply(self, bitboard: int):
-        """ Apply this move to the provided bitboard.
-        """
-        if not self.from_mask:
-            bitboard = bitboard | self.to_mask
-        # If the provided bitboard contains the moving piece...
-        elif bitboard & self.from_mask:
-            # ... remove the piece from the bitboard...
-            bitboard = bitboard & self.from_mask_inv
-            # ... and add it back in the new position...
-            bitboard = bitboard | self.to_mask
-        # ... otherwise, zero the bit in the new position.
-        else:
-            bitboard = bitboard & self.to_mask_inv
-        return bitboard
-    
-    def revert(self, bitboard: int):
-        """ Revert the effect of this move on the provided bitboard.
-        """
-        # If the provided bitboard contains the moved piece
-        if bitboard & self.to_mask:
-            # ... remove the piece from the bitboard...
-            bitboard = bitboard & self.to_mask_inv
-            # ... and add it back to its original position...
-            bitboard = bitboard | self.from_mask
-        # ... otherwise, zero the bit in the original position.
-        else:
-            bitboard = bitboard & self.from_mask_inv
-        return bitboard
 
     def __eq__(self, other: "Move"):
         if not isinstance(other, Move):
@@ -265,7 +240,7 @@ def pawn_pushes(origins: int, occupation: int, side: sides.Side):
         # Check if the pawn should promote - if so, add possible promotions.
         if squares.masks[target] & promotion_rank:
             for piece in pieces.Piece:
-                if piece == pieces.Piece.PAWN:
+                if piece in (pieces.Piece.PAWN, pieces.Piece.DUCK):
                     continue
                 pawn_pushes.append(
                     Move(
@@ -314,13 +289,13 @@ def pawn_captures(origins: int, enemies: int, side: sides.Side):
             if squares.masks[target] & promotion_rank:
                 # If so, add possible promotions.
                 for piece in pieces.Piece:
-                    if piece == pieces.Piece.PAWN:
+                    if piece in (pieces.Piece.PAWN, pieces.Piece.DUCK):
                         continue
                     pawn_captures.append(
                         Move(
                             from_index=pawn,
                             to_index=target,
-                            move_type=MoveType.PAWN_PROMOTION,
+                            move_type=MoveType.PAWN_CAPTURE_PROMOTION,
                             promotion=piece
                         )
                     )
@@ -436,6 +411,47 @@ def king_moves(origins: int, occupation: int, blockers: int):
                 )
             )
     return king_moves
+
+# Castling move generation
+def castling(rooks: int, kings: int, occupation: int, rights: int):
+    """ Generates valid castles, taking into account castling rights.
+    """
+    # Return immediately if there are no valid castling moves.
+    if rights == consts.EMPTY:
+        return []
+    
+    castle_moves = []
+    # Identify the rooks that are allowed to castle.
+    valid_rooks = utils.get_squares(rooks & rights)
+    # Check for blockers.
+    wq_blockers = occupation & consts.CASTLING_WHITE_QUEENSIDE_BLOCKERS
+    wk_blockers = occupation & consts.CASTLING_WHITE_KINGSIDE_BLOCKERS
+    bq_blockers = occupation & consts.CASTLING_BLACK_QUEENSIDE_BLOCKERS
+    bk_blockers = occupation & consts.CASTLING_BLACK_KINGSIDE_BLOCKERS
+
+    for rook in valid_rooks:
+        # White queenside castling is allowed.
+        if rook == squares.a1 and wq_blockers == consts.EMPTY:
+            castle_moves.append(
+                Move(move_type=MoveType.CASTLE_QUEENSIDE)
+            )
+        # White kingside castling is allowed.
+        if rook == squares.h1 and wq_blockers == consts.EMPTY:
+            castle_moves.append(
+                Move(move_type=MoveType.CASTLE_KINGSIDE)
+            )
+        # Black queenside castling is allowed.
+        if rook == squares.a8 and bq_blockers == consts.EMPTY:
+            castle_moves.append(
+                Move(move_type=MoveType.CASTLE_QUEENSIDE)
+            )
+        # Black kingside castling is allowed.
+        if rook == squares.h8 and bk_blockers == consts.EMPTY:
+            castle_moves.append(
+                Move(move_type=MoveType.CASTLE_KINGSIDE)
+            )
+    
+    return castle_moves
 
 # Duck move generation
 def duck_moves(origin, occupation):
