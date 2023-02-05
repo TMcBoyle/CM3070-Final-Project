@@ -18,7 +18,7 @@ class Node:
         for move in moves:
             child_state = copy.deepcopy(self.state)
             child_state.make_move(move)
-            self.children[str(move)] = Node(child_state, parent=self)
+            self.children[move] = Node(child_state, parent=self)
 
     def count(self):
         """ Counts the number of child nodes this node has, and the number of their children.

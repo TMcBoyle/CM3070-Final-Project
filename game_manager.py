@@ -26,7 +26,7 @@ class GameManager:
                 self.board.make_move(move)
                 duck = self.request_next_move()
                 self.board.make_move(duck)
-                if self.output:
+                if self.output == "verbose":
                     print(f"{move}{duck} was played.")
                 self.board.check_game_end()
             if self.board.terminal == GameState.WHITE_WINS:
@@ -42,17 +42,17 @@ class GameManager:
 
             self.order = 1 - self.order
 
-            if self.output:
+            if self.output == "verbose":
                 print(f"Game over. {result}")
-        print(f"Match over. Final score: {scores[0]}-{scores[1]}")
-            
+        if self.output in ("verbose", "outcome"):
+            print(f"Match over. Final score: {scores[0]}-{scores[1]}")
 
     def request_next_move(self):
         legal_moves = self.board.get_legal_moves()
 
         if self.board.turn == Side.WHITE and not self.board.duck_turn:
             if self.white:
-                move = self.white.evaluate(self.board)
+                move = self.white.get_next_move(self.board)
                 return move
             else:
                 move = None
@@ -61,7 +61,7 @@ class GameManager:
                 return move
         elif self.board.turn == Side.WHITE and self.board.duck_turn:
             if self.white:
-                move = self.white.evaluate(self.board)
+                move = self.white.get_next_move(self.board)
                 return move
             else:
                 move = None
@@ -70,7 +70,7 @@ class GameManager:
                 return move
         elif self.board.turn == Side.BLACK:
             if self.black:
-                move = self.black.evaluate(self.board)
+                move = self.black.get_next_move(self.board)
                 return move
             else: 
                 move = None
@@ -79,7 +79,7 @@ class GameManager:
                 return move
         elif self.board.turn == Side.BLACK and self.board.duck_turn:
             if self.black:
-                move = self.black.evaluate(self.board)
+                move = self.black.get_next_move(self.board)
                 return move
             else:
                 move = None

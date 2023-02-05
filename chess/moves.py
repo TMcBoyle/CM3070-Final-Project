@@ -82,17 +82,23 @@ class Move:
             self.to_mask = squares.masks[self.to_square]
             self.to_mask_inv = utils.invert(self.to_mask)
 
+    def __key(self):
+        return (self.from_square, self.to_square)
+
     def __eq__(self, other: "Move"):
-        if not isinstance(other, Move):
-            return False
-        else:
-            return self.algebraic == other.algebraic
+        if isinstance(other, Move):
+            return self.__key() == other.__key()
+        return NotImplemented
         
     def __str__(self):
         return (
             f"{self.algebraic}"
             f"{'=' + self.promotion.value if self.promotion else ''}"
         )
+    
+    # Method from https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
+    def __hash__(self):
+        return hash(self.__key)
 
 # Move template generation
 # Precalculated move arrays

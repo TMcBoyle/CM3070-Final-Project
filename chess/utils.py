@@ -270,6 +270,14 @@ def hyperbola_quintessence(occupancy, mask, piece):
     forward = forward ^ rotate_180(reverse)
     return forward & mask
 
+# Population count algorithm - Brian Kernighan's method.
+def population_count(board):
+    count = 0
+    while board > 0:
+        count += 1
+        board &= board - 1
+    return count
+
 # Utility functions
 def pretty_string(bitboard):
     """ Returns the string representation of a bitboard

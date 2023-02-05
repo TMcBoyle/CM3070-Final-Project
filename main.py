@@ -1,10 +1,11 @@
 from game_manager import GameManager
 from agent import Agent
+from goose import Goose
 from timeit import timeit
 
 def main():
-    gm = GameManager(Agent(), Agent(), output=False)
-    gm.start(10)
+    gm = GameManager(Goose(), Goose(), output="outcome")
+    gm.start(100)
 
 if __name__ == "__main__":
-    main()
+    print(timeit(main, number=1))

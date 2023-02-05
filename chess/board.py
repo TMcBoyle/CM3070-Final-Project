@@ -125,7 +125,6 @@ class Board:
                 self.bitboards[self.turn][move.promotion] |= move.to_mask
 
         self.duck_turn = not self.duck_turn
-        self.update_mailbox()
 
     def get_legal_moves(self):
         """ Returns a list of legal moves for the current side.
@@ -179,6 +178,7 @@ class Board:
         self.mailbox = result
 
     def __str__(self):
+        self.update_mailbox()
         result = ""
         for s in range(len(self.mailbox), 0, -8):
             result += f"{s//8}|" + ''.join(self.mailbox[s-8:s]) + '\n' 
