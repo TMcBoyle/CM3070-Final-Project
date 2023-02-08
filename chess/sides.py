@@ -2,9 +2,17 @@
 """
 from enum import Enum
 
-class Side(Enum):
+class Side:
     WHITE = 0
-    BLACK = 1
+    WHITE_DUCK = 1
+    BLACK = 2
+    BLACK_DUCK = 3
 
-def advance_turn(side: Side):
-    return Side.WHITE if side == Side.BLACK else Side.BLACK
+def advance_turn(current: Side, skip_duck=False):
+    if not skip_duck:
+        return Side((current + 1) % len(Side))
+    else:
+        if current in (Side.WHITE, Side.WHITE_DUCK):
+            return Side.BLACK
+        else:
+            return Side.WHITE

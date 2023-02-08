@@ -29,8 +29,9 @@ class Move:
     """ Holds the from/to square indices of a move, 
         promoted piece, and any other relevant information.
     """
-    def __init__(self, move_type: MoveType, from_index: int=None, to_index: int=None, promotion: pieces.Piece=None):
+    def __init__(self, move_type: MoveType, piece: pieces.Piece=None, from_index: int=None, to_index: int=None, promotion: pieces.Piece=None):
         self.move_type = move_type
+        self.piece = piece
         self.from_index = from_index
         self.to_index = to_index
         self.promotion = promotion
@@ -46,6 +47,13 @@ class Move:
     def __hash__(self):
         return hash(self.__key())
 
+    def __repr__(self):
+        return f"<chess.moves.Move: " \
+               f"from_index={self.from_index}, " \
+               f"to_index={self.to_index}, " \
+               f"move_type={self.move_type}, " \
+               f"promotion={self.promotion}>"
+
     def __str__(self):
         if self.move_type == MoveType.CASTLE_KINGSIDE:
             return "O-O"
@@ -54,9 +62,9 @@ class Move:
         elif self.move_type == MoveType.DUCK:
             return f"@{squares.labels(self.to_index)}"
         elif self.move_type in (MoveType.PAWN_PROMOTION, MoveType.PAWN_CAPTURE_PROMOTION):
-            return f"{squares.labels(self.from_index)}{squares.labels(self.to_index)}={self.promotion}"
+            return f"{squares.labels[self.from_index]}{squares.labels[self.to_index]}={self.promotion}"
         else:
-            return f"{squares.labels(self.from_index)}{squares.labels(self.to_index)}"
+            return f"{squares.labels[self.from_index]}{squares.labels[self.to_index]}"
 
 # Move template generation
 # Precalculated move arrays
@@ -145,7 +153,8 @@ def sliding_moves(
         axes: list,
         occupation: int,
         blockers: int,
-        move_type: MoveType=None
+        move_type: MoveType=None,
+        piece: pieces.Piece=None
     ):
     """ Generates valid sliding moves from a given origin square,
         based on the provided occupation and blocker bitboards, along the
@@ -172,6 +181,7 @@ def sliding_moves(
         moves.append(
             Move(
                 move_type=move_type,
+                piece=piece,
                 from_index=origin,
                 to_index=target
             )
@@ -209,6 +219,7 @@ def pawn_pushes(origins: int, occupation: int, side: sides.Side):
                 pawn_pushes.append(
                     Move(
                         move_type=MoveType.PAWN_PROMOTION,
+                        piece=pieces.Piece.PAWN,
                         from_index=target - direction,
                         to_index=target,
                         promotion=piece
@@ -219,6 +230,7 @@ def pawn_pushes(origins: int, occupation: int, side: sides.Side):
             pawn_pushes.append(
                 Move(
                     move_type=MoveType.PAWN_SINGLE,
+                    piece=pieces.Piece.PAWN,
                     from_index=target - direction,
                     to_index=target
                 )
@@ -228,6 +240,7 @@ def pawn_pushes(origins: int, occupation: int, side: sides.Side):
         pawn_pushes.append(
             Move(
                 move_type=MoveType.PAWN_DOUBLE,
+                piece=pieces.Piece.PAWN,
                 from_index=target - direction * 2,
                 to_index=target
             )
@@ -258,6 +271,7 @@ def pawn_captures(origins: int, enemies: int, side: sides.Side):
                     pawn_captures.append(
                         Move(
                             move_type=MoveType.PAWN_CAPTURE_PROMOTION,
+                            piece=pieces.Piece.PAWN,
                             from_index=pawn,
                             to_index=target,
                             promotion=piece
@@ -268,6 +282,7 @@ def pawn_captures(origins: int, enemies: int, side: sides.Side):
                 pawn_captures.append(
                     Move(
                         move_type=MoveType.PAWN_CAPTURE,
+                        piece=pieces.Piece.PAWN,
                         from_index=pawn,
                         to_index=target
                     )
@@ -288,6 +303,7 @@ def knight_moves(origins: int, occupation: int, blockers: int):
             knight_moves.append(
                 Move(
                     move_type=MoveType.KNIGHT,
+                    piece=pieces.Piece.KNIGHT,
                     from_index=knight,
                     to_index=target
                 )
@@ -310,7 +326,8 @@ def bishop_moves(origins: int, occupation: int, blockers: int):
             ],
             occupation,
             blockers,
-            MoveType.BISHOP
+            MoveType.BISHOP,
+            pieces.Piece.BISHOP
         )
     return bishop_moves
 
@@ -330,7 +347,8 @@ def rook_moves(origins: int, occupation: int, blockers: int):
             ],
             occupation,
             blockers,
-            MoveType.ROOK
+            MoveType.ROOK,
+            pieces.Piece.ROOK
         )
     return rook_moves
 
@@ -352,7 +370,8 @@ def queen_moves(origins: int, occupation: int, blockers: int):
             ],
             occupation,
             blockers,
-            MoveType.QUEEN
+            MoveType.QUEEN,
+            pieces.Piece.QUEEN
         )
     return queen_moves
 
@@ -370,6 +389,7 @@ def king_moves(origins: int, occupation: int, blockers: int):
             king_moves.append(
                 Move(
                     move_type=MoveType.KING,
+                    piece=pieces.Piece.KING,
                     from_index=king,
                     to_index=target
                 )
@@ -377,43 +397,22 @@ def king_moves(origins: int, occupation: int, blockers: int):
     return king_moves
 
 # Castling move generation
-def castling(rooks: int, kings: int, occupation: int, rights: int):
+def castling(occupation: int, rights: list, turn: sides.Side):
     """ Generates valid castles, taking into account castling rights.
     """
     # Return immediately if there are no valid castling moves.
-    if rights == consts.EMPTY:
+    if not rights[turn]:
         return []
     
     castle_moves = []
-    # Identify the rooks that are allowed to castle.
-    valid_rooks = utils.get_squares(rooks & rights)
     # Check for blockers.
-    wq_blockers = occupation & consts.CASTLING_WHITE_QUEENSIDE_BLOCKERS
-    wk_blockers = occupation & consts.CASTLING_WHITE_KINGSIDE_BLOCKERS
-    bq_blockers = occupation & consts.CASTLING_BLACK_QUEENSIDE_BLOCKERS
-    bk_blockers = occupation & consts.CASTLING_BLACK_KINGSIDE_BLOCKERS
+    queenside_blockers = occupation & consts.CASTLING_QUEENSIDE[turn]["BLOCKERS"]
+    kingside_blockers  = occupation & consts.CASTLING_KINGSIDE[turn]["BLOCKERS"]
 
-    for rook in valid_rooks:
-        # White queenside castling is allowed.
-        if rook == squares.a1 and wq_blockers == consts.EMPTY:
-            castle_moves.append(
-                Move(move_type=MoveType.CASTLE_QUEENSIDE)
-            )
-        # White kingside castling is allowed.
-        if rook == squares.h1 and wk_blockers == consts.EMPTY:
-            castle_moves.append(
-                Move(move_type=MoveType.CASTLE_KINGSIDE)
-            )
-        # Black queenside castling is allowed.
-        if rook == squares.a8 and bq_blockers == consts.EMPTY:
-            castle_moves.append(
-                Move(move_type=MoveType.CASTLE_QUEENSIDE)
-            )
-        # Black kingside castling is allowed.
-        if rook == squares.h8 and bk_blockers == consts.EMPTY:
-            castle_moves.append(
-                Move(move_type=MoveType.CASTLE_KINGSIDE)
-            )
+    if MoveType.CASTLE_KINGSIDE in rights[turn] and not kingside_blockers:
+        castle_moves.append(Move(MoveType.CASTLE_KINGSIDE))
+    if MoveType.CASTLE_QUEENSIDE in rights[turn] and not queenside_blockers:
+        castle_moves.append(Move(MoveType.CASTLE_QUEENSIDE))
     
     return castle_moves
 
@@ -425,10 +424,13 @@ def duck_moves(origin, occupation):
     duck_moves = []
     if origin:
         origin = utils.get_squares(origin)[0]
+    else:
+        origin = None
     for target in utils.get_squares(utils.invert(occupation)):
         duck_moves.append(
             Move(
                 move_type=MoveType.DUCK,
+                piece=pieces.Piece.DUCK,
                 from_index=origin,
                 to_index=target
             )
