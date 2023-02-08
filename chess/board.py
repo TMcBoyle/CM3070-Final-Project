@@ -17,9 +17,10 @@ class GameState(Enum):
     STALEMATE = 3
 
 class PositionProperties:
-    def __init__(self, turn: Side, castle_rights: dict, en_passant=None, game_state: GameState=None, move: Move=None, capture: Piece=None):
+    def __init__(self, turn: Side, castle_rights: dict, duck=None, en_passant=None, game_state: GameState=None, move: Move=None, capture: Piece=None):
         self.turn = turn
         self.castle_rights = deepcopy(castle_rights)
+        self.duck = duck
         self.en_passant = en_passant
         self.game_state = game_state
         self.move = move
@@ -105,6 +106,7 @@ class Board:
         self.stack.append(PositionProperties(
             self.turn,
             self.castle_rights,
+            self.duck,
             self.en_passant,
             self.game_state,
             move
@@ -187,6 +189,8 @@ class Board:
         """ Reverts the last played move and restores position properties
             such as castling rights.
         """
+        if not self.stack:
+            return
         properties = self.stack.pop()
         self.turn = properties.turn
         self.castle_rights = properties.castle_rights
@@ -198,11 +202,11 @@ class Board:
         from_mask = squares.masks[move.from_index] if move.from_index is not None else None
         to_mask = squares.masks[move.to_index] if move.to_index is not None else None
         opponent = Side.WHITE if self.turn in (Side.BLACK, Side.BLACK_DUCK) else Side.BLACK
-
-        # Duck moves
-        if move.move_type == MoveType.DUCK:
-            self.duck = from_mask
         
+        # Duck
+        if move.move_type == MoveType.DUCK:
+            self.duck = properties.duck
+
         # Castling
         elif move.move_type == MoveType.CASTLE_KINGSIDE:
             # Move the rook/king
@@ -236,7 +240,8 @@ class Board:
             # Move the piece back
             self.pieces[self.turn][move.piece] ^= (from_mask | to_mask)
             # Restore the captured piece
-            self.pieces[opponent][properties.capture] |= to_mask
+            if properties.capture:
+                self.pieces[opponent][properties.capture] |= to_mask
 
     def update_mailbox(self):
         """ Returns the current board state in mailbox format (i.e.,
