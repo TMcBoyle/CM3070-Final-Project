@@ -6,10 +6,12 @@ from . import utils
 from . import pieces
 from . import sides
 
+import re
 from enum import Enum
 
 # Move types enum
 class MoveType(Enum):
+    MANUAL = -1
     PAWN_SINGLE = 0
     PAWN_DOUBLE = 1
     PAWN_CAPTURE = 2
@@ -36,13 +38,65 @@ class Move:
         self.to_index = to_index
         self.promotion = promotion
 
+    def from_algebraic(move: str):
+        """ Builds a move from an algebraic string. Example valid moves are:
+            - e2e4
+            - h7h8=Q
+            - O-O
+            - @d6
+        """
+        if not re.match("^([abcdefgh][1-8]){2}(=[NBRQ])?|@[abcdefgh][1-8]|O-O-O|O-O$", move):
+            return None
+
+        result = Move(MoveType.MANUAL)
+        if re.match("^@[abcdefgh][1-8]$", move):
+            to_label = move[1:3]
+
+            result.move_type = MoveType.DUCK
+            result.piece = pieces.Piece.DUCK
+            result.to_index = squares.labels.index(to_label)
+        elif move == "O-O":
+            result.move_type = MoveType.CASTLE_KINGSIDE
+        elif move == "O-O-O":
+            result.move_type = MoveType.CASTLE_QUEENSIDE
+        elif re.match("^([abcdefgh][1-8]){2}$", move):
+            from_label = move[0:2]
+            to_label = move[2:4]
+
+            result.from_index = squares.labels.index(from_label)
+            result.to_index = squares.labels.index(to_label)
+        elif re.match("^([abcdefgh][1-8]){2}=[NBRQ]$", move):
+            from_label = move[0:2]
+            to_label = move[2:4]
+            promotion = move[-1]
+
+            if from_label[0] == to_label[0]:
+                result.move_type = MoveType.PAWN_PROMOTION
+                result.piece = pieces.Piece.PAWN
+            else:
+                result.move_type = MoveType.PAWN_CAPTURE_PROMOTION
+                result.piece = pieces.Piece.PAWN
+
+            result.from_index = squares.labels.index(from_label)
+            result.to_index = squares.labels.index(to_label)
+            result.promotion = pieces.Piece(promotion)
+    
+        return result
+
     def __key(self):
         return (self.from_index, self.to_index, self.move_type, self.promotion)
     
     def __eq__(self, other: "Move"):
         if not isinstance(other, Move):
             return NotImplemented
-        return self.__key() == other.__key()
+        
+        if MoveType.MANUAL in (self.move_type, other.move_type):
+            return \
+                self.from_index == other.from_index \
+                and self.to_index == other.to_index \
+                and self.promotion == other.promotion
+        else:
+            return self.__key() == other.__key()
 
     def __hash__(self):
         return hash(self.__key())
@@ -52,6 +106,7 @@ class Move:
                f"from_index={self.from_index}, " \
                f"to_index={self.to_index}, " \
                f"move_type={self.move_type}, " \
+               f"piece={self.piece}, " \
                f"promotion={self.promotion}>"
 
     def __str__(self):
@@ -60,7 +115,7 @@ class Move:
         elif self.move_type == MoveType.CASTLE_QUEENSIDE:
             return "O-O-O"
         elif self.move_type == MoveType.DUCK:
-            return f"@{squares.labels(self.to_index)}"
+            return f"@{squares.labels[self.to_index]}"
         elif self.move_type in (MoveType.PAWN_PROMOTION, MoveType.PAWN_CAPTURE_PROMOTION):
             return f"{squares.labels[self.from_index]}{squares.labels[self.to_index]}={self.promotion}"
         else:
@@ -417,21 +472,17 @@ def castling(occupation: int, rights: list, turn: sides.Side):
     return castle_moves
 
 # Duck move generation
-def duck_moves(origin, occupation):
+def duck_moves(occupation):
     """ Generates valid duck moves, taking into account its current
         position and board occupation.
     """
     duck_moves = []
-    if origin:
-        origin = utils.get_squares(origin)[0]
-    else:
-        origin = None
     for target in utils.get_squares(utils.invert(occupation)):
         duck_moves.append(
             Move(
                 move_type=MoveType.DUCK,
                 piece=pieces.Piece.DUCK,
-                from_index=origin,
+                from_index=None,
                 to_index=target
             )
         )

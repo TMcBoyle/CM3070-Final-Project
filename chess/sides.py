@@ -2,17 +2,11 @@
 """
 from enum import Enum
 
-class Side:
+class Side(Enum):
     WHITE = 0
     WHITE_DUCK = 1
     BLACK = 2
     BLACK_DUCK = 3
 
-def advance_turn(current: Side, skip_duck=False):
-    if not skip_duck:
-        return Side((current + 1) % len(Side))
-    else:
-        if current in (Side.WHITE, Side.WHITE_DUCK):
-            return Side.BLACK
-        else:
-            return Side.WHITE
+def advance_turn(current: Side):
+    return Side((current.value + 1) % len(Side))

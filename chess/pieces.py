@@ -29,7 +29,5 @@ symbols = {
         Piece.QUEEN: "q",
         Piece.KING: "k"
     },
-    "duck": {
-        Piece.DUCK: "@"
-    }
+    Piece.DUCK: "@"
 }

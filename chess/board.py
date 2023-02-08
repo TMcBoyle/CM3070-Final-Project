@@ -17,10 +17,11 @@ class GameState(Enum):
     STALEMATE = 3
 
 class PositionProperties:
-    def __init__(self, turn: Side, castle_rights: dict, en_passant=None, move: Move=None, capture: Piece=None):
+    def __init__(self, turn: Side, castle_rights: dict, en_passant=None, game_state: GameState=None, move: Move=None, capture: Piece=None):
         self.turn = turn
         self.castle_rights = deepcopy(castle_rights)
         self.en_passant = en_passant
+        self.game_state = game_state
         self.move = move
         self.capture = capture
 
@@ -36,12 +37,12 @@ class Board:
                 Piece.KING: consts.INIT_WHITE_KING,
             },
             Side.BLACK: {
-                Piece.PAWN: consts.INIT_WHITE_PAWNS,
-                Piece.KNIGHT: consts.INIT_WHITE_KNIGHTS,
-                Piece.BISHOP: consts.INIT_WHITE_BISHOPS,
-                Piece.ROOK: consts.INIT_WHITE_ROOKS,
-                Piece.QUEEN: consts.INIT_WHITE_QUEENS,
-                Piece.KING: consts.INIT_WHITE_KING,
+                Piece.PAWN: consts.INIT_BLACK_PAWNS,
+                Piece.KNIGHT: consts.INIT_BLACK_KNIGHTS,
+                Piece.BISHOP: consts.INIT_BLACK_BISHOPS,
+                Piece.ROOK: consts.INIT_BLACK_ROOKS,
+                Piece.QUEEN: consts.INIT_BLACK_QUEENS,
+                Piece.KING: consts.INIT_BLACK_KING,
             }
         }
         
@@ -56,15 +57,22 @@ class Board:
             Side.BLACK: [MoveType.CASTLE_KINGSIDE, MoveType.CASTLE_QUEENSIDE]
         }
         self.en_passant = None
+        self.game_state = GameState.ONGOING
 
         self.stack = []
 
         self.mailbox = []
         self.update_mailbox()
 
+    def update_game_state(self):
+        if self.pieces[Side.WHITE][Piece.KING] == consts.EMPTY:
+            self.game_state = GameState.BLACK_WINS
+        elif self.pieces[Side.BLACK][Piece.KING] == consts.EMPTY:
+            self.game_state = GameState.WHITE_WINS
+
     def get_legal_moves(self):
         if self.turn in (Side.WHITE_DUCK, Side.BLACK_DUCK):
-            return duck_moves(self.duck, self.occupied)
+            return duck_moves(self.occupied)
         
         if self.turn == Side.WHITE:
             allies = self.pieces[Side.WHITE]
@@ -98,6 +106,7 @@ class Board:
             self.turn,
             self.castle_rights,
             self.en_passant,
+            self.game_state,
             move
         ))
 
@@ -107,22 +116,21 @@ class Board:
 
         # Duck moves
         if move.move_type == MoveType.DUCK:
-            # Remove the duck if it's already on the board
-            if self.duck != consts.EMPTY:
-                self.occupied ^= self.duck
-                self.duck ^= from_mask
-            # Place the duck on the destination square
-            self.duck |= to_mask
-                    
+            self.duck = to_mask
+        
         # Castling
         elif move.move_type == MoveType.CASTLE_KINGSIDE:
             # Move the rook/king
-            self.pieces[self.turn][Piece.ROOK] ^= consts.CASTLING_KINGSIDE[self.turn][Piece.ROOK]
-            self.pieces[self.turn][Piece.KING] ^= consts.CASTLING_KINGSIDE[self.turn][Piece.KING]
+            rook_swap = consts.CASTLING_KINGSIDE[self.turn][Piece.ROOK]
+            king_swap = consts.CASTLING_KINGSIDE[self.turn][Piece.KING]
+            self.pieces[self.turn][Piece.ROOK] ^= rook_swap
+            self.pieces[self.turn][Piece.KING] ^= king_swap
         elif move.move_type == MoveType.CASTLE_QUEENSIDE:
             # Move the rook/king
-            self.pieces[self.turn][Piece.ROOK] ^= consts.CASTLING_QUEENSIDE[self.turn][Piece.ROOK]
-            self.pieces[self.turn][Piece.KING] ^= consts.CASTLING_QUEENSIDE[self.turn][Piece.KING]
+            rook_swap = consts.CASTLING_QUEENSIDE[self.turn][Piece.ROOK]
+            king_swap = consts.CASTLING_QUEENSIDE[self.turn][Piece.KING]
+            self.pieces[self.turn][Piece.ROOK] ^= rook_swap
+            self.pieces[self.turn][Piece.KING] ^= king_swap
 
         # Promotions
         elif move.move_type == MoveType.PAWN_PROMOTION:
@@ -130,26 +138,50 @@ class Board:
             self.pieces[self.turn][Piece.PAWN] ^= from_mask
             # Add the new, promoted piece
             self.pieces[self.turn][move.promotion] |= to_mask
+            # Update aggregated bitboards
         elif move.move_type == MoveType.PAWN_CAPTURE_PROMOTION:
             # Remove the pawn
             self.pieces[self.turn][Piece.PAWN] ^= from_mask
             # Add the new, promoted piece
             self.pieces[self.turn][move.promotion] |= to_mask
             # Find and remove the captured piece
-            for piece, bitboard in self.pieces[opponent].items():
-                if bitboard & to_mask:
-                    bitboard ^= to_mask
+            for piece in self.pieces[opponent]:
+                if self.pieces[opponent][piece] & to_mask:
+                    self.pieces[opponent][piece] ^= to_mask
                     self.stack[-1].capture = piece
+                    break
 
         # Other moves
         else:
             # Move the piece
-            self.pieces[self.turn][move.piece] ^= (from_mask | to_mask)
+            if move.piece:
+                self.pieces[self.turn][move.piece] ^= (from_mask | to_mask)
+            else:
+                # For manual moves, we don't know which piece is being move so we have
+                # to search for it.
+                for piece in self.pieces[self.turn]:
+                    if self.pieces[self.turn][piece] & from_mask:
+                        self.pieces[self.turn][piece] ^= (from_mask | to_mask)
+                        move.piece = piece
+                        break
             # Check for captures, removing the captured piece if needed
-            for piece, bitboard in self.pieces[opponent].items():
-                if bitboard & to_mask:
-                    bitboard ^= to_mask
+            for piece in self.pieces[opponent]:
+                if self.pieces[opponent][piece] & to_mask:
+                    self.pieces[opponent][piece] ^= to_mask
                     self.stack[-1].capture = piece
+                    break
+
+        # Update aggregate bitboards
+        self.white = consts.EMPTY
+        for bitboard in self.pieces[Side.WHITE].values():
+            self.white |= bitboard
+        self.black = consts.EMPTY
+        for bitboard in self.pieces[Side.BLACK].values():
+            self.black |= bitboard
+        self.occupied = self.duck | self.white | self.black
+
+        self.turn = sides.advance_turn(self.turn)
+        self.update_game_state()
 
     def unmake_move(self):
         """ Reverts the last played move and restores position properties
@@ -159,6 +191,7 @@ class Board:
         self.turn = properties.turn
         self.castle_rights = properties.castle_rights
         self.en_passant = properties.en_passant
+        self.game_state = properties.game_state
 
         move = properties.move
 
@@ -168,22 +201,21 @@ class Board:
 
         # Duck moves
         if move.move_type == MoveType.DUCK:
-            # Remove the duck if it's already on the board
-            if self.duck != consts.EMPTY:
-                self.occupied ^= self.duck
-                self.duck ^= to_mask
-            # Place the duck back on the origin square
-            self.duck |= from_mask
+            self.duck = from_mask
         
         # Castling
         elif move.move_type == MoveType.CASTLE_KINGSIDE:
             # Move the rook/king
-            self.pieces[self.turn][Piece.ROOK] ^= consts.CASTLING_KINGSIDE[self.turn][Piece.ROOK]
-            self.pieces[self.turn][Piece.KING] ^= consts.CASTLING_KINGSIDE[self.turn][Piece.KING]
+            rook_swap = consts.CASTLING_KINGSIDE[self.turn][Piece.ROOK]
+            king_swap = consts.CASTLING_KINGSIDE[self.turn][Piece.KING]
+            self.pieces[self.turn][Piece.ROOK] ^= rook_swap
+            self.pieces[self.turn][Piece.KING] ^= king_swap
         elif move.move_type == MoveType.CASTLE_QUEENSIDE:
             # Move the rook/king
-            self.pieces[self.turn][Piece.ROOK] ^= consts.CASTLING_QUEENSIDE[self.turn][Piece.ROOK]
-            self.pieces[self.turn][Piece.KING] ^= consts.CASTLING_QUEENSIDE[self.turn][Piece.KING]
+            rook_swap = consts.CASTLING_QUEENSIDE[self.turn][Piece.ROOK]
+            king_swap = consts.CASTLING_QUEENSIDE[self.turn][Piece.KING]
+            self.pieces[self.turn][Piece.ROOK] ^= rook_swap
+            self.pieces[self.turn][Piece.KING] ^= king_swap
 
         # Promotions
         elif move.move_type == MoveType.PAWN_PROMOTION:
@@ -211,10 +243,13 @@ class Board:
             a length 64 array with characters representing the pieces)
         """
         result = [' '] * 64
-        for side, group in self.pieces.items():
-            for piece, bitboard in group.items():
+        for side in self.pieces:
+            for piece, bitboard in self.pieces[side].items():
                 for square in utils.get_squares(bitboard):
                     result[square] = pieces.symbols[side][piece]
+        if self.duck != consts.EMPTY:
+            result[utils.get_squares(self.duck)[0]] = pieces.symbols[Piece.DUCK]
+
         self.mailbox = result
 
     def __str__(self):
