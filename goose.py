@@ -16,39 +16,54 @@ EVAL_QUEEN_VALUE  = 9
 EVAL_KING_VALUE   = 100_000
 
 class Goose(Agent):
-    def evaluate(self, board: Board):
+    def __init__(self, board: Board):
+        self.board = board
+
+    def evaluate(self):
+        agent = self.board.turn
+        opponent = Side.BLACK if agent in (Side.WHITE, Side.WHITE_DUCK) else Side.WHITE
+
         score = 0
         
-        score += population_count(board.pieces[Side.WHITE][Piece.PAWN])   * EVAL_PAWN_VALUE
-        score += population_count(board.pieces[Side.WHITE][Piece.KNIGHT]) * EVAL_KNIGHT_VALUE
-        score += population_count(board.pieces[Side.WHITE][Piece.BISHOP]) * EVAL_BISHOP_VALUE
-        score += population_count(board.pieces[Side.WHITE][Piece.ROOK])   * EVAL_ROOK_VALUE
-        score += population_count(board.pieces[Side.WHITE][Piece.QUEEN])  * EVAL_QUEEN_VALUE
-        score += population_count(board.pieces[Side.WHITE][Piece.KING])   * EVAL_KING_VALUE
+        score += population_count(self.board.pieces[agent][Piece.PAWN])   * EVAL_PAWN_VALUE
+        score += population_count(self.board.pieces[agent][Piece.KNIGHT]) * EVAL_KNIGHT_VALUE
+        score += population_count(self.board.pieces[agent][Piece.BISHOP]) * EVAL_BISHOP_VALUE
+        score += population_count(self.board.pieces[agent][Piece.ROOK])   * EVAL_ROOK_VALUE
+        score += population_count(self.board.pieces[agent][Piece.QUEEN])  * EVAL_QUEEN_VALUE
+        score += population_count(self.board.pieces[agent][Piece.KING])   * EVAL_KING_VALUE
 
-        score -= population_count(board.pieces[Side.BLACK][Piece.PAWN])   * EVAL_PAWN_VALUE
-        score -= population_count(board.pieces[Side.BLACK][Piece.KNIGHT]) * EVAL_KNIGHT_VALUE
-        score -= population_count(board.pieces[Side.BLACK][Piece.BISHOP]) * EVAL_BISHOP_VALUE
-        score -= population_count(board.pieces[Side.BLACK][Piece.ROOK])   * EVAL_ROOK_VALUE
-        score -= population_count(board.pieces[Side.BLACK][Piece.QUEEN])  * EVAL_QUEEN_VALUE
-        score -= population_count(board.pieces[Side.BLACK][Piece.KING])   * EVAL_KING_VALUE
+        score -= population_count(self.board.pieces[opponent][Piece.PAWN])   * EVAL_PAWN_VALUE
+        score -= population_count(self.board.pieces[opponent][Piece.KNIGHT]) * EVAL_KNIGHT_VALUE
+        score -= population_count(self.board.pieces[opponent][Piece.BISHOP]) * EVAL_BISHOP_VALUE
+        score -= population_count(self.board.pieces[opponent][Piece.ROOK])   * EVAL_ROOK_VALUE
+        score -= population_count(self.board.pieces[opponent][Piece.QUEEN])  * EVAL_QUEEN_VALUE
+        score -= population_count(self.board.pieces[opponent][Piece.KING])   * EVAL_KING_VALUE
 
         return score
 
-    
+    def get_next_move(self):
+        return self.search(1)[1:]
 
-    def get_next_move(self, board: Board):
-        turn = board.turn
-        sign = 1 if turn in (Side.WHITE, Side.WHITE_DUCK) else -1
-        moves = board.get_legal_moves()
+    def __negamax(self, node: Node, depth: int):
+        if depth == 0:
+            return self.evaluate()
+        
+        maximum = None
+        for move in node.children:
+            self.board.make_move(move.move)
+            for duck in move.children:
+                self.board.make_move(duck.move)
+                score = -self.__negamax(duck, depth - 1)
+                self.board.unmake_move()
 
-        best = None
-        best_move = None
-        for move in moves:
-            board.make_move(move)
-            current = sign * self.evaluate(board)
-            if best is None or current > best:
-                best = current
-                best_move = move
-            board.unmake_move()
-        return best_move
+                if maximum is None or score > maximum[0]:
+                    maximum = (score, move.move, duck.move)
+            self.board.unmake_move()
+
+        return maximum
+
+    def search(self, depth: int=1):
+        tree = Tree(self.board)
+        tree.grow(tree.root, depth * 2)
+
+        return self.__negamax(tree.root, depth)

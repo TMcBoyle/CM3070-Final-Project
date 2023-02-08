@@ -15,11 +15,11 @@ class Tree:
 
     def grow(self, node: Node, depth=1):
         current = node
-        while depth > 0:
+        if depth > 0:
             if not current.children:
                 for move in self.board.get_legal_moves():
                     current.children.append(Node(move, current))
             for child in current.children:
                 self.board.make_move(child.move)
-                self.expand(child, depth - 1)
+                self.grow(child, depth - 1)
                 self.board.unmake_move()

@@ -1,10 +1,20 @@
-from chess import board
+from chess.board import Board
 import random
 
 class Agent:
-    def get_next_move(self, board: board.Board):
-        legal_moves = board.get_legal_moves()
+    def __init__(self, board: Board):
+        self.board = board
+
+    def get_next_move(self):
+        legal_moves = self.board.get_legal_moves()
         if legal_moves:
-            return random.choice(legal_moves)
+            move = random.choice(legal_moves)
+            self.board.make_move(move)
+
+            duck_moves = self.board.get_legal_moves()
+            duck = random.choice(duck_moves)
+            self.board.unmake_move()
+
+            return (move, duck)
         else:
             return None
