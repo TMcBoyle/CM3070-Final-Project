@@ -15,6 +15,13 @@ class GameState(Enum):
     BLACK_WINS = 2
     STALEMATE = 3
 
+class PositionProperties:
+    def __init__(self, board: "Board"):
+        self.en_passant = board.en_passant
+        self.turn = board.turn
+        self.duck_turn = board.duck_turn
+        self.castle_rights = {**board.castle_rights}
+
 class Board:
     def __init__(self):
         self.bitboards = {
@@ -50,6 +57,8 @@ class Board:
         }
         self.terminal = GameState.ONGOING
 
+        self.stack = []
+
         self.update_mailbox()
 
     def check_game_end(self):
@@ -69,7 +78,7 @@ class Board:
     def empty(self):
         return utils.invert(self.occupied())
 
-    def update_bitboard(self, bitboard: int, move: moves.Move):
+    def update_bitboard(self, bitboard: int, move: moves.Move, type: pieces.Piece):
         """ Apply a move to a bitboard, returning an updated copy.
         """
         if move.from_mask is not None and move.to_mask is not None:
@@ -77,10 +86,17 @@ class Board:
             if bitboard & move.from_mask:
                 # ... move it to the new position...
                 bitboard = (bitboard & move.from_mask_inv) | move.to_mask
-            # ... otherwise, remove the piece in the destination square.
+            # ... otherwise, remove the piece in the destination square and record
+            # the captured piece into the move object.
             else:
                 bitboard &= move.to_mask_inv
+                move.capture = type
             return bitboard
+
+    def revert_bitboard(self, bitboard: int, move: moves.Move):
+        """ Revert the effect of a move on a bitboard, returning an updated copy.
+        """
+        pass
 
     def make_move(self, move: moves.Move):
         """ Returns a copy of this board with the provided move applied.
@@ -115,7 +131,8 @@ class Board:
                 for piece in self.bitboards[side]:
                     self.bitboards[side][piece] = self.update_bitboard(
                         self.bitboards[side][piece],
-                        move
+                        move,
+                        piece
                     )
             # Handle promotions
             if move.move_type == moves.MoveType.PAWN_PROMOTION:
@@ -124,7 +141,12 @@ class Board:
                 # ... and replace it with the promoted piece
                 self.bitboards[self.turn][move.promotion] |= move.to_mask
 
+        self.stack.append(PositionProperties(self))
         self.duck_turn = not self.duck_turn
+
+    def unmake_move(self, move: moves.Move):
+        # Restore position properties from the stack.
+        pass
 
     def get_legal_moves(self):
         """ Returns a list of legal moves for the current side.
@@ -164,23 +186,23 @@ class Board:
         duck_moves = moves.duck_moves(duck, self.occupied())
         return duck_moves
 
-    def update_mailbox(self):
-        """ Returns the current board state in mailbox format (i.e.,
-            a length 64 array with characters representing the pieces)
-        """
-        result = [' '] * 64
-        for side, group in self.bitboards.items():
-            for piece, bitboard in group.items():
-                if piece == "all":
-                    continue
-                for square in utils.get_squares(bitboard):
-                    result[square] = pieces.symbols[side][piece]
-        self.mailbox = result
+    # def update_mailbox(self):
+    #     """ Returns the current board state in mailbox format (i.e.,
+    #         a length 64 array with characters representing the pieces)
+    #     """
+    #     result = [' '] * 64
+    #     for side, group in self.bitboards.items():
+    #         for piece, bitboard in group.items():
+    #             if piece == "all":
+    #                 continue
+    #             for square in utils.get_squares(bitboard):
+    #                 result[square] = pieces.symbols[side][piece]
+    #     self.mailbox = result
 
-    def __str__(self):
-        self.update_mailbox()
-        result = ""
-        for s in range(len(self.mailbox), 0, -8):
-            result += f"{s//8}|" + ''.join(self.mailbox[s-8:s]) + '\n' 
-        result += " +--------\n  ABCDEFGH"
-        return result.strip('\n')
+    # def __str__(self):
+    #     self.update_mailbox()
+    #     result = ""
+    #     for s in range(len(self.mailbox), 0, -8):
+    #         result += f"{s//8}|" + ''.join(self.mailbox[s-8:s]) + '\n' 
+    #     result += " +--------\n  ABCDEFGH"
+    #     return result.strip('\n')

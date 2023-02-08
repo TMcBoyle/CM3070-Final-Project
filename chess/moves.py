@@ -8,13 +8,6 @@ from . import sides
 
 from enum import Enum
 
-# Castling rights enum
-class Castling(Enum):
-    WHITE_KINGSIDE = 0
-    WHITE_QUEENSIDE = 1
-    BLACK_KINGSIDE = 0
-    BLACK_QUEENSIDE = 1
-
 # Move types enum
 class MoveType(Enum):
     PAWN_SINGLE = 0
@@ -36,69 +29,34 @@ class Move:
     """ Holds the from/to square indices of a move, 
         promoted piece, and any other relevant information.
     """
-    def __init__(
-            self, 
-            algebraic: str=None,
-            from_index: int=None,
-            to_index: int=None,
-            move_type: MoveType=None,
-            promotion: pieces.Piece=None
-        ):
-        self.algebraic = None
-        self.from_square = None
-        self.to_square = None
-        self.from_mask = None
-        self.to_mask = None
-        self.from_mask_inv = None
-        self.to_mask_inv = None
+    def __init__(self, move_type: MoveType, from_index: int=None, to_index: int=None, promotion: pieces.Piece=None):
         self.move_type = move_type
+        self.from_index = from_index
+        self.to_index = to_index
         self.promotion = promotion
 
-        if algebraic:
-            self.algebraic = algebraic
-            if algebraic.startswith("@"):
-                self.from_square = None
-                self.to_square = squares.labels.index(algebraic[1:])
-            else:
-                self.from_square = squares.labels.index(algebraic[:2])
-                self.to_square   = squares.labels.index(algebraic[2:])
-        else:
-            self.from_square = from_index
-            self.to_square = to_index
-            if move_type == MoveType.DUCK:
-                self.algebraic = f"@{squares.labels[to_index]}"
-            elif move_type == MoveType.CASTLE_KINGSIDE:
-                self.algebraic = "O-O"
-            elif move_type == MoveType.CASTLE_QUEENSIDE:
-                self.algebraic = "O-O-O"
-            else:
-                self.algebraic = f"{squares.labels[from_index]}{squares.labels[to_index]}"
-
-        if self.from_square is not None:
-            self.from_mask = squares.masks[self.from_square]
-            self.from_mask_inv = utils.invert(self.from_mask)
-
-        if self.to_square is not None:
-            self.to_mask = squares.masks[self.to_square]
-            self.to_mask_inv = utils.invert(self.to_mask)
-
     def __key(self):
-        return (self.from_square, self.to_square)
-
-    def __eq__(self, other: "Move"):
-        if isinstance(other, Move):
-            return self.__key() == other.__key()
-        return NotImplemented
-        
-    def __str__(self):
-        return (
-            f"{self.algebraic}"
-            f"{'=' + self.promotion.value if self.promotion else ''}"
-        )
+        return (self.from_index, self.to_index, self.move_type, self.promotion)
     
-    # Method from https://stackoverflow.com/questions/2909106/whats-a-correct-and-good-way-to-implement-hash
+    def __eq__(self, other: "Move"):
+        if not isinstance(other, Move):
+            return NotImplemented
+        return self.__key() == other.__key()
+
     def __hash__(self):
-        return hash(self.__key)
+        return hash(self.__key())
+
+    def __str__(self):
+        if self.move_type == MoveType.CASTLE_KINGSIDE:
+            return "O-O"
+        elif self.move_type == MoveType.CASTLE_QUEENSIDE:
+            return "O-O-O"
+        elif self.move_type == MoveType.DUCK:
+            return f"@{squares.labels(self.to_index)}"
+        elif self.move_type in (MoveType.PAWN_PROMOTION, MoveType.PAWN_CAPTURE_PROMOTION):
+            return f"{squares.labels(self.from_index)}{squares.labels(self.to_index)}={self.promotion}"
+        else:
+            return f"{squares.labels(self.from_index)}{squares.labels(self.to_index)}"
 
 # Move template generation
 # Precalculated move arrays
@@ -213,9 +171,9 @@ def sliding_moves(
     for target in utils.get_squares(targets):
         moves.append(
             Move(
+                move_type=move_type,
                 from_index=origin,
-                to_index=target,
-                move_type=move_type
+                to_index=target
             )
         )
 
@@ -250,9 +208,9 @@ def pawn_pushes(origins: int, occupation: int, side: sides.Side):
                     continue
                 pawn_pushes.append(
                     Move(
+                        move_type=MoveType.PAWN_PROMOTION,
                         from_index=target - direction,
                         to_index=target,
-                        move_type=MoveType.PAWN_PROMOTION,
                         promotion=piece
                     )
                 )
@@ -260,18 +218,18 @@ def pawn_pushes(origins: int, occupation: int, side: sides.Side):
         else:
             pawn_pushes.append(
                 Move(
+                    move_type=MoveType.PAWN_SINGLE,
                     from_index=target - direction,
-                    to_index=target,
-                    move_type=MoveType.PAWN_SINGLE
+                    to_index=target
                 )
             )
     # Double pushes - note these can't be promotions.
     for target in utils.get_squares(double_pushes):
         pawn_pushes.append(
             Move(
+                move_type=MoveType.PAWN_DOUBLE,
                 from_index=target - direction * 2,
-                to_index=target,
-                move_type=MoveType.PAWN_DOUBLE
+                to_index=target
             )
         )
     return pawn_pushes
@@ -299,9 +257,9 @@ def pawn_captures(origins: int, enemies: int, side: sides.Side):
                         continue
                     pawn_captures.append(
                         Move(
+                            move_type=MoveType.PAWN_CAPTURE_PROMOTION,
                             from_index=pawn,
                             to_index=target,
-                            move_type=MoveType.PAWN_CAPTURE_PROMOTION,
                             promotion=piece
                         )
                     )
@@ -309,9 +267,9 @@ def pawn_captures(origins: int, enemies: int, side: sides.Side):
             else:
                 pawn_captures.append(
                     Move(
+                        move_type=MoveType.PAWN_CAPTURE,
                         from_index=pawn,
-                        to_index=target,
-                        move_type=MoveType.PAWN_CAPTURE
+                        to_index=target
                     )
                 )
     return pawn_captures
@@ -329,9 +287,9 @@ def knight_moves(origins: int, occupation: int, blockers: int):
         for target in utils.get_squares(targets):
             knight_moves.append(
                 Move(
+                    move_type=MoveType.KNIGHT,
                     from_index=knight,
-                    to_index=target,
-                    move_type=MoveType.KNIGHT
+                    to_index=target
                 )
             )
     return knight_moves
@@ -411,9 +369,9 @@ def king_moves(origins: int, occupation: int, blockers: int):
         for target in utils.get_squares(targets):
             king_moves.append(
                 Move(
+                    move_type=MoveType.KING,
                     from_index=king,
-                    to_index=target,
-                    move_type=MoveType.KING
+                    to_index=target
                 )
             )
     return king_moves
@@ -442,7 +400,7 @@ def castling(rooks: int, kings: int, occupation: int, rights: int):
                 Move(move_type=MoveType.CASTLE_QUEENSIDE)
             )
         # White kingside castling is allowed.
-        if rook == squares.h1 and wq_blockers == consts.EMPTY:
+        if rook == squares.h1 and wk_blockers == consts.EMPTY:
             castle_moves.append(
                 Move(move_type=MoveType.CASTLE_KINGSIDE)
             )
@@ -470,9 +428,9 @@ def duck_moves(origin, occupation):
     for target in utils.get_squares(utils.invert(occupation)):
         duck_moves.append(
             Move(
+                move_type=MoveType.DUCK,
                 from_index=origin,
-                to_index=target,
-                move_type=MoveType.DUCK
+                to_index=target
             )
         )
     return duck_moves
