@@ -50,11 +50,21 @@ class Goose(Agent):
     def get_next_move(self):
         return self.search(2)
 
-    def __negamax(self, depth):
+    def __negamax(self, depth: int):
         if depth == 0:
             return self.evaluate()
         
+        maximum = -infinity
+        for move in self.board.get_legal_moves():
+            self.board.make_move(move)
+            self.board.skip_move()
+            score = -self.__negamax(depth - 1)
+            self.board.unmake_move()
 
+            if score > maximum:
+                maximum = score
+        return maximum
+        
     def search(self, depth: int=1):
         self.eval_side = self.board.turn
 
@@ -62,7 +72,8 @@ class Goose(Agent):
         best_move = None
         for move in self.board.get_legal_moves():
             self.board.make_move(move)
-            score = self.evaluate()
+            self.board.skip_move()
+            score = self.__negamax(depth)
             self.board.unmake_move()
 
             if score > best:
