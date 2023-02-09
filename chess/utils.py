@@ -190,11 +190,11 @@ def flip_vertical(board: int):
     """ Flips a bitboard vertically. Adapted from:
         https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating#Vertical
     """
-    k8 = 0x00FF00FF00FF00FF
+    k8  = 0x00FF00FF00FF00FF
     k16 = 0x0000FFFF0000FFFF
     board = delta_swap(board, k8, 8)
     board = delta_swap(board, k16, 16)
-    board = ((board >> 32) | (board << 32))
+    board = (board >> 32) | (board << 32)
     return board & consts.FILLED
 
 def flip_horizontal(board: int):

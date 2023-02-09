@@ -72,12 +72,20 @@ class TestAlgorithms(unittest.TestCase):
     def test_flip_vertical(self):
         board = consts.TEST_UPPER_LEFT
         self.assertEqual(utils.flip_vertical(board), consts.TEST_LOWER_LEFT)
+        board = consts.TEST_UPPER_RIGHT
+        self.assertEqual(utils.flip_vertical(board), consts.TEST_LOWER_RIGHT)
+        board = consts.TEST_LOWER_LEFT
+        self.assertEqual(utils.flip_vertical(board), consts.TEST_UPPER_LEFT)
         board = consts.TEST_LOWER_RIGHT
         self.assertEqual(utils.flip_vertical(board), consts.TEST_UPPER_RIGHT)
 
     def test_flip_horizontal(self):
         board = consts.TEST_UPPER_LEFT
         self.assertEqual(utils.flip_horizontal(board), consts.TEST_UPPER_RIGHT)
+        board = consts.TEST_UPPER_RIGHT
+        self.assertEqual(utils.flip_horizontal(board), consts.TEST_UPPER_LEFT)
+        board = consts.TEST_LOWER_LEFT
+        self.assertEqual(utils.flip_horizontal(board), consts.TEST_LOWER_RIGHT)
         board = consts.TEST_LOWER_RIGHT
         self.assertEqual(utils.flip_horizontal(board), consts.TEST_LOWER_LEFT)
 
@@ -92,6 +100,12 @@ class TestAlgorithms(unittest.TestCase):
         self.assertEqual(utils.flip_diagonal_a8h1(board), consts.TEST_UPPER_LEFT)
         board = consts.TEST_LOWER_LEFT
         self.assertEqual(utils.flip_diagonal_a8h1(board), consts.TEST_UPPER_RIGHT)
+
+    def test_rotations(self):
+        board = consts.TEST_UPPER_LEFT
+        self.assertEqual(utils.rotate_90(board), consts.TEST_UPPER_RIGHT)
+        self.assertEqual(utils.rotate_180(board), consts.TEST_LOWER_RIGHT)
+        self.assertEqual(utils.rotate_270(board), consts.TEST_LOWER_LEFT)
 
     def test_hyperbola_quintessence(self):
         idx = squares.e3
