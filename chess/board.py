@@ -270,6 +270,10 @@ class Board:
                 if self.pieces[opponent][piece] & to_mask:
                     self.pieces[opponent][piece] ^= to_mask
                     self.stack[-1].capture = piece
+
+                    # Update castle right for captured rooks
+                    if piece == Piece.ROOK and to_mask & self.castle_rights:
+                        self.castle_rights ^= to_mask
                     break
 
         # Update aggregate bitboards

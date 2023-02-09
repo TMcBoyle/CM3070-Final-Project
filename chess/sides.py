@@ -10,3 +10,9 @@ class Side(Enum):
 
 def advance_turn(current: Side):
     return Side((current.value + 1) % len(Side))
+
+def opposing_side(side: Side):
+    if side in (side.WHITE, side.WHITE_DUCK):
+        return Side.BLACK
+    else:
+        return Side.WHITE

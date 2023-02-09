@@ -38,7 +38,7 @@ class Move:
         self.to_index = to_index
         self.promotion = promotion
 
-    def from_string(move: str):
+    def from_string(move: str, move_type: MoveType=MoveType.MANUAL):
         """ Builds a move from an algebraic string. Example valid moves are:
             - e2e4
             - h7h8=Q
@@ -48,7 +48,7 @@ class Move:
         if not re.match("^([abcdefgh][1-8]){2}(=[NBRQ])?|@[abcdefgh][1-8]|O-O-O|O-O$", move):
             return None
 
-        result = Move(MoveType.MANUAL)
+        result = Move(move_type)
         if re.match("^@[abcdefgh][1-8]$", move):
             to_label = move[1:3]
 
