@@ -85,7 +85,7 @@ def invert(board: int):
     """ Inverts a bitboard (i.e., changes all ones to zeros
         and vice versa).
     """
-    return (board & consts.FILLED) ^ consts.FILLED
+    return board ^ consts.FILLED
 
 # Delta swap function
 def delta_swap(board, mask, delta):
@@ -121,7 +121,7 @@ def east(board: int, times=1):
     """
     result = board
     for _ in range(times):
-        result = (result & invert(consts.FILE_H)) << 1
+        result = (result & consts.EAST_WRAP_MASK) << 1
     return result
 
 def south(board: int, times=1):
@@ -134,7 +134,7 @@ def west(board: int, times=1):
     """
     result = board
     for _ in range(times):
-        result = (result & invert(consts.FILE_A)) >> 1
+        result = (result & consts.WEST_WRAP_MASK) >> 1
     return result
 
 # Diagonal Bitboard Translations
@@ -187,28 +187,27 @@ def translate(board: int, direction: Direction, times: int=1):
 # Adapted from: https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
 # Flip a bitboard
 def flip_vertical(board: int):
-    """ Flips a bitboard vertically.
+    """ Flips a bitboard vertically. Adapted from:
+        https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating#Vertical
     """
-    return    (north(board, 7) & consts.RANK_8) \
-            | (north(board, 5) & consts.RANK_7) \
-            | (north(board, 3) & consts.RANK_6) \
-            | (north(board, 1) & consts.RANK_5) \
-            | (south(board, 1) & consts.RANK_4) \
-            | (south(board, 3) & consts.RANK_3) \
-            | (south(board, 5) & consts.RANK_2) \
-            | (south(board, 7) & consts.RANK_1)
+    k8  = 0x00FF00FF00FF00FF
+    k16 = 0x0000FFFF0000FFFF
+    board = delta_swap(board, k8, 8)
+    board = delta_swap(board, k16, 16)
+    board = (board >> 32) | (board << 32)
+    return board & consts.FILLED
 
 def flip_horizontal(board: int):
-    """ Flips a bitboard horizontally.
+    """ Flips a bitboard horizontally. Adapted from:
+        https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating#Horizontal
     """
-    return    (west(board, 7) & consts.FILE_A) \
-            | (west(board, 5) & consts.FILE_B) \
-            | (west(board, 3) & consts.FILE_C) \
-            | (west(board, 1) & consts.FILE_D) \
-            | (east(board, 1) & consts.FILE_E) \
-            | (east(board, 3) & consts.FILE_F) \
-            | (east(board, 5) & consts.FILE_G) \
-            | (east(board, 7) & consts.FILE_H)
+    k1 = 0x5555555555555555
+    k2 = 0x3333333333333333
+    k4 = 0x0f0f0f0f0f0f0f0f
+    board = delta_swap(board, k1, 1)
+    board = delta_swap(board, k2, 2)
+    board = delta_swap(board, k4, 4)
+    return board & consts.FILLED
 
 def flip_diagonal_a1h8(board: int):
     """ Flips a bitboard about the a1-h8 diagonal. Uses the delta
@@ -264,10 +263,10 @@ def hyperbola_quintessence(occupancy, mask, piece):
         into account blocking pieces.
     """
     forward = occupancy & mask
-    reverse = rotate_180(forward)
+    reverse = rotate_180(forward & consts.FILLED)
     forward = forward - piece * 2
     reverse = reverse - rotate_180(piece) * 2
-    forward = forward ^ rotate_180(reverse)
+    forward = forward ^ rotate_180(reverse & consts.FILLED)
     return forward & mask
 
 # Population count algorithm - Brian Kernighan's method.

@@ -29,7 +29,21 @@ symbols = {
         Piece.QUEEN: "q",
         Piece.KING: "k"
     },
-    "duck": {
-        Piece.DUCK: "@"
-    }
+    Piece.DUCK: "@"
+}
+
+symbol_lookup = {
+    "P": (Side.WHITE, Piece.PAWN),
+    "N": (Side.WHITE, Piece.KNIGHT),
+    "B": (Side.WHITE, Piece.BISHOP),
+    "R": (Side.WHITE, Piece.ROOK),
+    "Q": (Side.WHITE, Piece.QUEEN),
+    "K": (Side.WHITE, Piece.KING),
+    "p": (Side.BLACK, Piece.PAWN),
+    "n": (Side.BLACK, Piece.KNIGHT),
+    "b": (Side.BLACK, Piece.BISHOP),
+    "r": (Side.BLACK, Piece.ROOK),
+    "q": (Side.BLACK, Piece.QUEEN),
+    "k": (Side.BLACK, Piece.KING),
+    "@": (None, Piece.DUCK),
 }

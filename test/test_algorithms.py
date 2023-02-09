@@ -72,12 +72,20 @@ class TestAlgorithms(unittest.TestCase):
     def test_flip_vertical(self):
         board = consts.TEST_UPPER_LEFT
         self.assertEqual(utils.flip_vertical(board), consts.TEST_LOWER_LEFT)
+        board = consts.TEST_UPPER_RIGHT
+        self.assertEqual(utils.flip_vertical(board), consts.TEST_LOWER_RIGHT)
+        board = consts.TEST_LOWER_LEFT
+        self.assertEqual(utils.flip_vertical(board), consts.TEST_UPPER_LEFT)
         board = consts.TEST_LOWER_RIGHT
         self.assertEqual(utils.flip_vertical(board), consts.TEST_UPPER_RIGHT)
 
     def test_flip_horizontal(self):
         board = consts.TEST_UPPER_LEFT
         self.assertEqual(utils.flip_horizontal(board), consts.TEST_UPPER_RIGHT)
+        board = consts.TEST_UPPER_RIGHT
+        self.assertEqual(utils.flip_horizontal(board), consts.TEST_UPPER_LEFT)
+        board = consts.TEST_LOWER_LEFT
+        self.assertEqual(utils.flip_horizontal(board), consts.TEST_LOWER_RIGHT)
         board = consts.TEST_LOWER_RIGHT
         self.assertEqual(utils.flip_horizontal(board), consts.TEST_LOWER_LEFT)
 
@@ -93,6 +101,12 @@ class TestAlgorithms(unittest.TestCase):
         board = consts.TEST_LOWER_LEFT
         self.assertEqual(utils.flip_diagonal_a8h1(board), consts.TEST_UPPER_RIGHT)
 
+    def test_rotations(self):
+        board = consts.TEST_UPPER_LEFT
+        self.assertEqual(utils.rotate_90(board), consts.TEST_UPPER_RIGHT)
+        self.assertEqual(utils.rotate_180(board), consts.TEST_LOWER_RIGHT)
+        self.assertEqual(utils.rotate_270(board), consts.TEST_LOWER_LEFT)
+
     def test_hyperbola_quintessence(self):
         idx = squares.e3
         piece = squares.masks[idx]
@@ -101,6 +115,20 @@ class TestAlgorithms(unittest.TestCase):
         for other in other_pieces:
             occupancy |= squares.masks[other]
         # Horizontal
+        expected = consts.EMPTY
+        for square in [
+            squares.b3, squares.c3, squares.d3, # Left
+            squares.f3, squares.g3, squares.h3, # Right
+            squares.e1, squares.e2, # Down
+            squares.e4, squares.e5, squares.e6, squares.e7, squares.e8 # Up
+        ]:
+            expected |= squares.masks[square]
+
+        hori = utils.hyperbola_quintessence(occupancy, utils.get_rank(idx), piece)
+        vert = utils.hyperbola_quintessence(occupancy, utils.get_file(idx), piece)
+        result = hori | vert
+
+        self.assertEqual(result, expected)
 
         # Diagonal
         expected = consts.EMPTY
@@ -115,10 +143,5 @@ class TestAlgorithms(unittest.TestCase):
         diag = utils.hyperbola_quintessence(occupancy, utils.get_diagonal(idx), piece)
         anti = utils.hyperbola_quintessence(occupancy, utils.get_antidiagonal(idx), piece)
         result = diag | anti
-
-        print("")
-        utils.pretty_print(diag)
-        print("")
-        utils.pretty_print(expected)
 
         self.assertEqual(result, expected)
