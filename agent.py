@@ -15,6 +15,6 @@ class Agent:
             duck = random.choice(duck_moves)
             self.board.unmake_move()
 
-            return (move, duck)
+            return (None, move, duck)
         else:
             return None

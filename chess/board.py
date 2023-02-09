@@ -19,7 +19,7 @@ class GameState(Enum):
 class PositionProperties:
     def __init__(self, turn: Side, castle_rights: dict, duck=None, en_passant=None, game_state: GameState=None, move: Move=None, capture: Piece=None):
         self.turn = turn
-        self.castle_rights = deepcopy(castle_rights)
+        self.castle_rights = castle_rights
         self.duck = duck
         self.en_passant = en_passant
         self.game_state = game_state
@@ -53,10 +53,7 @@ class Board:
         self.occupied = consts.INIT_ALL_PIECES
 
         self.turn = Side.WHITE
-        self.castle_rights = {
-            Side.WHITE: [MoveType.CASTLE_KINGSIDE, MoveType.CASTLE_QUEENSIDE],
-            Side.BLACK: [MoveType.CASTLE_KINGSIDE, MoveType.CASTLE_QUEENSIDE]
-        }
+        self.castle_rights = consts.INIT_CASTLE_RIGHTS
         self.en_passant = None
         self.game_state = GameState.ONGOING
 
@@ -65,11 +62,66 @@ class Board:
         self.mailbox = []
         self.update_mailbox()
 
+    def from_fen_string(string: str):
+        """ Creates a board from a FEN-style string """
+        fields = string.split(" ")
+        ranks = fields[0]
+        turn = fields[1]
+        castle_rights = fields[2]
+        en_passant = fields[3]
+
+        board = Board()
+
+        idx = 0
+        for rank in ranks.split("/"):
+            for square in rank:
+                # Empty cells
+                if square.isnumeric():
+                    idx += int(square)
+                    continue
+                # Duck
+                elif square == pieces.symbols[Piece.DUCK]:
+                    board.duck = squares.masks[idx]
+                # Pieces
+                else:
+                    piece = pieces.symbol_lookup[square] # Tuple(Side, Piece)
+                    board.pieces[piece[0]][piece[1]] |= squares.masks[idx]
+                idx += 1
+        
+        # Set turn
+        if turn == "w":
+            board.turn = Side.WHITE
+        elif turn == "b":
+            board.turn = Side.BLACK
+
+        # Set castling rights
+        board.castle_rights = consts.EMPTY
+        if "Q" in castle_rights:
+            board.castle_rights |= squares.masks[squares.a1]
+        if "K" in castle_rights:
+            board.castle_rights |= squares.masks[squares.h1]
+        if "q" in castle_rights:
+            board.castle_rights |= squares.masks[squares.a8]
+        if "k" in castle_rights:
+            board.castle_rights |= squares.masks[squares.h8]
+
+        return board
+
     def update_game_state(self):
         if self.pieces[Side.WHITE][Piece.KING] == consts.EMPTY:
             self.game_state = GameState.BLACK_WINS
         elif self.pieces[Side.BLACK][Piece.KING] == consts.EMPTY:
             self.game_state = GameState.WHITE_WINS
+
+    def update_aggregate_boards(self):
+        """ Updates aggregate bitboards (occupied, white, black)"""
+        self.white = consts.EMPTY
+        for bitboard in self.pieces[Side.WHITE].values():
+            self.white |= bitboard
+        self.black = consts.EMPTY
+        for bitboard in self.pieces[Side.BLACK].values():
+            self.black |= bitboard
+        self.occupied = self.duck | self.white | self.black
 
     def get_legal_moves(self):
         if self.turn in (Side.WHITE_DUCK, Side.BLACK_DUCK):
@@ -97,6 +149,11 @@ class Board:
         )
 
         return legal_moves
+
+    def skip_move(self):
+        """ Advances the turn order without making a move.
+        """
+        self.turn = sides.advance_turn(self.turn)
 
     def make_move(self, move: Move):
         """ Applies the provided move to the board.
@@ -127,12 +184,16 @@ class Board:
             king_swap = consts.CASTLING_KINGSIDE[self.turn][Piece.KING]
             self.pieces[self.turn][Piece.ROOK] ^= rook_swap
             self.pieces[self.turn][Piece.KING] ^= king_swap
+            # Remove castling rights
+            self.castle_rights ^= squares.masks[squares.h1] if self.turn == Side.WHITE else squares.masks[squares.h8]
         elif move.move_type == MoveType.CASTLE_QUEENSIDE:
             # Move the rook/king
             rook_swap = consts.CASTLING_QUEENSIDE[self.turn][Piece.ROOK]
             king_swap = consts.CASTLING_QUEENSIDE[self.turn][Piece.KING]
             self.pieces[self.turn][Piece.ROOK] ^= rook_swap
             self.pieces[self.turn][Piece.KING] ^= king_swap
+            # Remove castling rights
+            self.castle_rights ^= squares.masks[squares.a1] if self.turn == Side.WHITE else squares.masks[squares.a8]
 
         # Promotions
         elif move.move_type == MoveType.PAWN_PROMOTION:
@@ -140,7 +201,6 @@ class Board:
             self.pieces[self.turn][Piece.PAWN] ^= from_mask
             # Add the new, promoted piece
             self.pieces[self.turn][move.promotion] |= to_mask
-            # Update aggregated bitboards
         elif move.move_type == MoveType.PAWN_CAPTURE_PROMOTION:
             # Remove the pawn
             self.pieces[self.turn][Piece.PAWN] ^= from_mask
@@ -174,13 +234,13 @@ class Board:
                     break
 
         # Update aggregate bitboards
-        self.white = consts.EMPTY
-        for bitboard in self.pieces[Side.WHITE].values():
-            self.white |= bitboard
-        self.black = consts.EMPTY
-        for bitboard in self.pieces[Side.BLACK].values():
-            self.black |= bitboard
-        self.occupied = self.duck | self.white | self.black
+        self.update_aggregate_boards()
+
+        # If the moved piece was a king or rook, update castling rights
+        if move.piece == Piece.KING:
+            self.castle_rights &= utils.invert(consts.WHITE_CASTLE_RIGHTS) if self.turn == Side.WHITE else utils.invert(consts.BLACK_CASTLE_RIGHTS)
+        elif move.piece == Piece.ROOK:
+            self.castle_rights &= utils.invert(from_mask)
 
         self.turn = sides.advance_turn(self.turn)
         self.update_game_state()
@@ -241,7 +301,10 @@ class Board:
             self.pieces[self.turn][move.piece] ^= (from_mask | to_mask)
             # Restore the captured piece
             if properties.capture:
-                self.pieces[opponent][properties.capture] |= to_mask
+                self.pieces[opponent][properties.capture] |= to_mask        
+                
+        # Update aggregate bitboards
+        self.update_aggregate_boards()
 
     def update_mailbox(self):
         """ Returns the current board state in mailbox format (i.e.,

@@ -269,7 +269,7 @@ def pawn_pushes(origins: int, occupation: int, side: sides.Side):
         # Check if the pawn should promote - if so, add possible promotions.
         if squares.masks[target] & promotion_rank:
             for piece in pieces.Piece:
-                if piece in (pieces.Piece.PAWN, pieces.Piece.DUCK):
+                if piece in (pieces.Piece.PAWN, pieces.Piece.KING, pieces.Piece.DUCK):
                     continue
                 pawn_pushes.append(
                     Move(
@@ -321,7 +321,7 @@ def pawn_captures(origins: int, enemies: int, side: sides.Side):
             if squares.masks[target] & promotion_rank:
                 # If so, add possible promotions.
                 for piece in pieces.Piece:
-                    if piece in (pieces.Piece.PAWN, pieces.Piece.DUCK):
+                    if piece in (pieces.Piece.PAWN, pieces.Piece.KING, pieces.Piece.DUCK):
                         continue
                     pawn_captures.append(
                         Move(
@@ -452,21 +452,26 @@ def king_moves(origins: int, occupation: int, blockers: int):
     return king_moves
 
 # Castling move generation
-def castling(occupation: int, rights: list, turn: sides.Side):
+def castling(occupation: int, rights: int, turn: sides.Side):
     """ Generates valid castles, taking into account castling rights.
     """
     # Return immediately if there are no valid castling moves.
-    if not rights[turn]:
+    if rights == consts.EMPTY:
         return []
     
+    if turn == sides.Side.WHITE:
+        rights &= consts.RANK_1
+    elif turn == sides.Side.BLACK:
+        rights &= consts.RANK_8
+
     castle_moves = []
     # Check for blockers.
     queenside_blockers = occupation & consts.CASTLING_QUEENSIDE[turn]["BLOCKERS"]
     kingside_blockers  = occupation & consts.CASTLING_KINGSIDE[turn]["BLOCKERS"]
 
-    if MoveType.CASTLE_KINGSIDE in rights[turn] and not kingside_blockers:
+    if rights & consts.FILE_H and not kingside_blockers:
         castle_moves.append(Move(MoveType.CASTLE_KINGSIDE))
-    if MoveType.CASTLE_QUEENSIDE in rights[turn] and not queenside_blockers:
+    if rights & consts.FILE_A and not queenside_blockers:
         castle_moves.append(Move(MoveType.CASTLE_QUEENSIDE))
     
     return castle_moves

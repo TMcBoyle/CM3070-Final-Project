@@ -16,22 +16,23 @@ class GameManager:
     def start(self, games=1):
         scores = [0, 0]
 
-        for _ in range(games):
+        for n in range(games):
+            moves = []
             self.board = Board()
 
             self.white = self.players[self.order](self.board)
             self.black = self.players[1 - self.order](self.board)
 
             while self.board.game_state == GameState.ONGOING:
-                if self.output == "verbose":
+                if self.output == "board":
                     print(self.board)
 
-                move = self.request_next_move()
-                self.board.make_move(move[0])
-                self.board.make_move(move[1])
+                moves.append(self.request_next_move())
+                self.board.make_move(moves[-1][1])
+                self.board.make_move(moves[-1][2])
 
-                if self.output == "verbose":
-                    print(f"{move[0]}{move[1]} was played.")
+                if self.output in ("board", "verbose"):
+                    print(f"{moves[-1][1]}{moves[-1][2]} was played (eval {moves[-1][0]}).")
 
             if self.board.game_state == GameState.WHITE_WINS:
                 result = "White wins!"
@@ -48,11 +49,18 @@ class GameManager:
 
             self.order = 1 - self.order
 
-            if self.output == "verbose":
+            with open(f'games/game{n}.txt', 'w') as f:
+                for n, move in enumerate(moves):
+                    f.write(f"{n}. {move[1]}{move[2]} ({move[0]})\n")
+                f.write(f"{result}")
+
+            if self.output in ("board", "verbose"):
                 print(f"Game over. {result}")
 
         if self.output in ("verbose", "outcome"):
-            print(f"Match over. Final score: {scores[0]}-{scores[1]}")
+            print(f"Match over. Final score: "\
+                  f"{self.players[0]} {scores[0]} - "\
+                  f"{self.players[1]} {scores[1]}")
 
     def request_next_move(self):
         if self.board.turn in (Side.WHITE, Side.WHITE_DUCK) and self.white:
@@ -73,4 +81,4 @@ class GameManager:
                 duck = Move.from_algebraic(input("Place the duck: "))
             self.board.unmake_move()
             
-            return (duck, move)
+            return (None, duck, move)
