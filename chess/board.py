@@ -27,7 +27,44 @@ class PositionProperties:
         self.capture = capture
 
 class Board:
-    def __init__(self):
+    def __init__(self, init_position=True):
+        self.pieces = {
+            Side.WHITE: {
+                Piece.PAWN: consts.EMPTY,
+                Piece.KNIGHT: consts.EMPTY,
+                Piece.BISHOP: consts.EMPTY,
+                Piece.ROOK: consts.EMPTY,
+                Piece.QUEEN: consts.EMPTY,
+                Piece.KING: consts.EMPTY,
+            },
+            Side.BLACK: {
+                Piece.PAWN: consts.EMPTY,
+                Piece.KNIGHT: consts.EMPTY,
+                Piece.BISHOP: consts.EMPTY,
+                Piece.ROOK: consts.EMPTY,
+                Piece.QUEEN: consts.EMPTY,
+                Piece.KING: consts.EMPTY,
+            }
+        }
+        
+        self.white = consts.EMPTY
+        self.black = consts.EMPTY
+        self.duck = consts.EMPTY
+        self.occupied = consts.EMPTY
+
+        self.turn = Side.WHITE
+        self.castle_rights = consts.EMPTY
+        self.en_passant = None
+        self.game_state = GameState.ONGOING
+
+        self.stack = []
+
+        self.mailbox = []
+
+        if init_position:
+            self.init_position()
+
+    def init_position(self):
         self.pieces = {
             Side.WHITE: {
                 Piece.PAWN: consts.INIT_WHITE_PAWNS,
@@ -46,7 +83,7 @@ class Board:
                 Piece.KING: consts.INIT_BLACK_KING,
             }
         }
-        
+
         self.white = consts.INIT_WHITE_PIECES
         self.black = consts.INIT_BLACK_PIECES
         self.duck = consts.INIT_DUCK
@@ -70,10 +107,10 @@ class Board:
         castle_rights = fields[2]
         en_passant = fields[3]
 
-        board = Board()
+        board = Board(init_position=False)
 
         idx = 0
-        for rank in ranks.split("/"):
+        for rank in reversed(ranks.split("/")):
             for square in rank:
                 # Empty cells
                 if square.isnumeric():
@@ -104,6 +141,8 @@ class Board:
             board.castle_rights |= squares.masks[squares.a8]
         if "k" in castle_rights:
             board.castle_rights |= squares.masks[squares.h8]
+
+        board.update_aggregate_boards()
 
         return board
 

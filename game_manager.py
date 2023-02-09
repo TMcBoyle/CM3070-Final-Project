@@ -6,10 +6,11 @@ from agent import Agent
 from random import randint
 
 class GameManager:
-    def __init__(self, player_one: type[Agent], player_two: type[Agent], output: bool=True):
+    def __init__(self, player_one: type[Agent], player_two: type[Agent], output: str, save_games: bool=False):
         self.board: Board = None
         self.players = [player_one, player_two]
         self.output = output
+        self.save_games = save_games
 
         self.order = randint(0, 1)
     
@@ -49,10 +50,11 @@ class GameManager:
 
             self.order = 1 - self.order
 
-            with open(f'games/game{n}.txt', 'w') as f:
-                for n, move in enumerate(moves):
-                    f.write(f"{n}. {move[1]}{move[2]} ({move[0]})\n")
-                f.write(f"{result}")
+            if self.save_games:
+                with open(f'games/game{n}.txt', 'w') as f:
+                    for n, move in enumerate(moves):
+                        f.write(f"{n}. {move[1]}{move[2]} ({move[0]})\n")
+                    f.write(f"{result}")
 
             if self.output in ("board", "verbose"):
                 print(f"Game over. {result}")
@@ -72,13 +74,13 @@ class GameManager:
             legal_moves = self.board.get_legal_moves()
             move = None
             while move not in legal_moves:
-                move = Move.from_algebraic(input("Enter a move: "))
+                move = Move.from_string(input("Enter a move: "))
             self.board.make_move(move)
 
             duck_moves = self.board.get_legal_moves()
             duck = None
             while duck not in duck_moves:
-                duck = Move.from_algebraic(input("Place the duck: "))
+                duck = Move.from_string(input("Place the duck: "))
             self.board.unmake_move()
             
             return (None, duck, move)

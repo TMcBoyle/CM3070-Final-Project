@@ -38,7 +38,7 @@ class Move:
         self.to_index = to_index
         self.promotion = promotion
 
-    def from_algebraic(move: str):
+    def from_string(move: str):
         """ Builds a move from an algebraic string. Example valid moves are:
             - e2e4
             - h7h8=Q

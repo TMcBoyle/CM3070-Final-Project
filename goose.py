@@ -26,7 +26,7 @@ class Goose(Agent):
 
     def evaluate(self):
         agent =    Side.WHITE if self.board.turn in (Side.WHITE, Side.WHITE_DUCK) else Side.BLACK
-        opponent = Side.BLACK if agent     in (Side.WHITE, Side.WHITE_DUCK) else Side.WHITE
+        opponent = Side.BLACK if agent in (Side.WHITE, Side.WHITE_DUCK) else Side.WHITE
         
         score = 0
         
@@ -47,7 +47,7 @@ class Goose(Agent):
         return score
 
     def get_next_move(self):
-        return self.search(3)
+        return self.search(2)
 
     def __negamax(self, node: Node, depth: int):
         if depth <= 0:
