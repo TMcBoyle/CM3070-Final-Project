@@ -34,13 +34,13 @@ def get_rank(idx: int):
     """ Returns a bitboard representing the rank on which
         the provided square index exists.
     """
-    return consts.LOOKUP_FILE[idx % 8]
+    return consts.LOOKUP_RANK[idx // 8]
 
 def get_file(idx: int):
     """ Returns a bitboard representing the file on which
         the provided square index exists.
     """
-    return consts.LOOKUP_RANK[idx // 8]
+    return consts.LOOKUP_FILE[idx % 8]
 
 def get_diagonal(idx: int):
     """ Returns a bitboard representing the diagonal

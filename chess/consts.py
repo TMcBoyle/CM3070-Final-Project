@@ -1,5 +1,8 @@
 """ Miscellaneous bitboard constants (e.g., A file, starting positions etc.).
 """
+from .sides import Side
+from .pieces import Piece
+
 # Fixed board constants (e.g., A file, 3rd rank, light squares etc.)
 # Miscellaneous
 EMPTY  = 0x0000000000000000
@@ -35,10 +38,16 @@ LOOKUP_FILE = [
 # Diagonals
 DIAG_A1H8 = 0x8040201008040201
 DIAG_A8H1 = 0x0102040810204080
+# Masks for avoiding wrapping
+WEST_WRAP_MASK = FILLED ^ FILE_A
+EAST_WRAP_MASK = FILLED ^ FILE_H
+
 # Sample boards for test functions
 TEST_R_SHAPE     = 0x1E2222120E0A1222
 TEST_UPPER_RIGHT = 0xFFFEFCF8F0E0C080
 TEST_UPPER_LEFT  = 0xFF7F3F1F0F070301
+TEST_LOWER_RIGHT = 0x80C0E0F0F8FCFEFF
+TEST_LOWER_LEFT  = 0x0103070F1F3F7FFF
 
 # Starting positions
 # Brief explanation of the concept - for the starting position of white's 
@@ -81,21 +90,36 @@ INIT_BLACK_KING    = 0x1000000000000000
 INIT_BLACK_PIECES  = RANK_7 | RANK_8
 # The duck starting position (i.e., empty)
 INIT_DUCK = 0x0000000000000000
+# Starting occupation mask
+INIT_ALL_PIECES = INIT_WHITE_PIECES | INIT_BLACK_PIECES | INIT_DUCK
 
 # Castling masks
-# White Kingside
-CASTLING_WHITE_KINGSIDE_BLOCKERS = (FILE_F | FILE_G) & RANK_1
-CASTLING_WHITE_KINGSIDE_KING = (FILE_E | FILE_G) & RANK_1
-CASTLING_WHITE_KINGSIDE_ROOK = (FILE_F | FILE_H) & RANK_1
-# White Queenside
-CASTLING_WHITE_QUEENSIDE_BLOCKERS = (FILE_B | FILE_C | FILE_D) & RANK_1
-CASTLING_WHITE_QUEENSIDE_KING = (FILE_E | FILE_C) & RANK_1
-CASTLING_WHITE_QUEENSIDE_ROOK = (FILE_A | FILE_D) & RANK_1
-# Black Kingside
-CASTLING_BLACK_KINGSIDE_BLOCKERS = (FILE_F | FILE_G) & RANK_8
-CASTLING_BLACK_KINGSIDE_KING = (FILE_E | FILE_G) & RANK_8
-CASTLING_BLACK_KINGSIDE_ROOK = (FILE_F | FILE_H) & RANK_8
-# Black Queenside
-CASTLING_BLACK_QUEENSIDE_BLOCKERS = (FILE_B | FILE_C | FILE_D) & RANK_8
-CASTLING_BLACK_QUEENSIDE_KING = (FILE_E | FILE_C) & RANK_8
-CASTLING_BLACK_QUEENSIDE_ROOK = (FILE_F | FILE_H) & RANK_8
+INIT_CASTLE_RIGHTS = INIT_WHITE_ROOKS | INIT_BLACK_ROOKS
+WHITE_CASTLE_RIGHTS = RANK_1 & (FILE_A | FILE_H)
+BLACK_CASTLE_RIGHTS = RANK_8 & (FILE_A | FILE_H)
+# Kingside
+CASTLING_KINGSIDE = {
+    Side.WHITE: {
+        "BLOCKERS": (FILE_F | FILE_G) & RANK_1,
+        Piece.KING:     (FILE_E | FILE_G) & RANK_1,
+        Piece.ROOK:     (FILE_F | FILE_H) & RANK_1
+    },
+    Side.BLACK: {
+        "BLOCKERS": (FILE_F | FILE_G) & RANK_8,
+        Piece.KING: (FILE_E | FILE_G) & RANK_8,
+        Piece.ROOK: (FILE_F | FILE_H) & RANK_8
+    }
+}
+# Queenside
+CASTLING_QUEENSIDE = {
+    Side.WHITE: {
+        "BLOCKERS": (FILE_B | FILE_C | FILE_D) & RANK_1,
+        Piece.KING:     (FILE_E | FILE_C) & RANK_1,
+        Piece.ROOK:     (FILE_A | FILE_D) & RANK_1
+    },
+    Side.BLACK: {
+        "BLOCKERS": (FILE_B | FILE_C | FILE_D) & RANK_8,
+        Piece.KING: (FILE_E | FILE_C) & RANK_8,
+        Piece.ROOK: (FILE_F | FILE_H) & RANK_8
+    }
+}
