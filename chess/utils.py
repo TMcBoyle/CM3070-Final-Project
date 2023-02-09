@@ -263,10 +263,10 @@ def hyperbola_quintessence(occupancy, mask, piece):
         into account blocking pieces.
     """
     forward = occupancy & mask
-    reverse = rotate_180(forward)
+    reverse = rotate_180(forward & consts.FILLED)
     forward = forward - piece * 2
     reverse = reverse - rotate_180(piece) * 2
-    forward = forward ^ rotate_180(reverse)
+    forward = forward ^ rotate_180(reverse & consts.FILLED)
     return forward & mask
 
 # Population count algorithm - Brian Kernighan's method.

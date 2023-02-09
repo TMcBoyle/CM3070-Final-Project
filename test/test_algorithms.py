@@ -115,6 +115,20 @@ class TestAlgorithms(unittest.TestCase):
         for other in other_pieces:
             occupancy |= squares.masks[other]
         # Horizontal
+        expected = consts.EMPTY
+        for square in [
+            squares.b3, squares.c3, squares.d3, # Left
+            squares.f3, squares.g3, squares.h3, # Right
+            squares.e1, squares.e2, # Down
+            squares.e4, squares.e5, squares.e6, squares.e7, squares.e8 # Up
+        ]:
+            expected |= squares.masks[square]
+
+        hori = utils.hyperbola_quintessence(occupancy, utils.get_rank(idx), piece)
+        vert = utils.hyperbola_quintessence(occupancy, utils.get_file(idx), piece)
+        result = hori | vert
+
+        self.assertEqual(result, expected)
 
         # Diagonal
         expected = consts.EMPTY
@@ -129,10 +143,5 @@ class TestAlgorithms(unittest.TestCase):
         diag = utils.hyperbola_quintessence(occupancy, utils.get_diagonal(idx), piece)
         anti = utils.hyperbola_quintessence(occupancy, utils.get_antidiagonal(idx), piece)
         result = diag | anti
-
-        print("")
-        utils.pretty_print(diag)
-        print("")
-        utils.pretty_print(expected)
 
         self.assertEqual(result, expected)
