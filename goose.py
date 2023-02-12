@@ -24,6 +24,8 @@ class Goose(Agent):
     def __init__(self, board: Board):
         self.board = board
         self.eval_side = board.turn
+        self.tree = Tree(board)
+        self.lookup = {}
 
     def evaluate(self):
         white = self.board.pieces[Side.WHITE]
@@ -48,24 +50,36 @@ class Goose(Agent):
         return score
 
     def get_next_move(self):
-        return self.search(2)
+        return self.search(3)
 
-    def __negamax(self, depth: int):
+    def __negamax_ab(self, alpha: float, beta: float, depth: int):
+        """ Based on pseudocode from:
+            https://www.chessprogramming.org/Alpha-Beta#Negamax_Framework
+        """
         if depth == 0:
             return self.evaluate()
         
-        maximum = -infinity
         for move in self.board.get_legal_moves():
             self.board.make_move(move)
             self.board.skip_move()
-            score = -self.__negamax(depth - 1)
+
+            if self.board.zbr_hash.hash in self.lookup:
+                return self.lookup[self.board.zbr_hash.hash]
+
+            score = -self.__negamax_ab(-beta, -alpha, depth - 1)
             self.board.unmake_move()
 
-            if score > maximum:
-                maximum = score
-        return maximum
+            if score >= beta:
+                self.lookup[self.board.zbr_hash.hash] = beta
+                return beta
+            
+            self.lookup[self.board.zbr_hash.hash] = score
+            if score > alpha:
+                alpha = score
+        return alpha
         
     def search(self, depth: int=1):
+        self.lookup = {} # Clear the lookup table
         self.eval_side = self.board.turn
 
         best = -infinity
@@ -73,7 +87,7 @@ class Goose(Agent):
         for move in self.board.get_legal_moves():
             self.board.make_move(move)
             self.board.skip_move()
-            score = self.__negamax(depth)
+            score = self.__negamax_ab(-infinity, infinity, depth)
             self.board.unmake_move()
 
             if score > best:

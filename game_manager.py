@@ -6,13 +6,19 @@ from agent import Agent
 from random import randint
 
 class GameManager:
-    def __init__(self, player_one: type[Agent], player_two: type[Agent], output: str, save_games: bool=False):
+    def __init__(self, player_one: type[Agent], player_two: type[Agent], output: str, save_games: bool=False, random_order: bool=True):
         self.board: Board = None
         self.players = [player_one, player_two]
         self.output = output
         self.save_games = save_games
 
-        self.order = randint(0, 1)
+        self.white = None
+        self.black = None
+
+        if random_order:
+            self.order = randint(0, 1)
+        else:
+            self.order = 0
     
     def start(self, games=1):
         scores = [0, 0]
@@ -21,8 +27,10 @@ class GameManager:
             moves = []
             self.board = Board()
 
-            self.white = self.players[self.order](self.board)
-            self.black = self.players[1 - self.order](self.board)
+            if self.players[self.order]:
+                self.white = self.players[self.order](self.board)
+            if self.players[1 - self.order]:
+                self.black = self.players[1 - self.order](self.board)
 
             while self.board.game_state == GameState.ONGOING:
                 if self.output == "board":
@@ -83,4 +91,4 @@ class GameManager:
                 duck = Move.from_string(input("Place the duck: "))
             self.board.unmake_move()
             
-            return (None, duck, move)
+            return (None, move, duck)

@@ -6,6 +6,7 @@ from .moves import *
 from .sides import Side
 from .pieces import Piece
 from . import squares
+from .zobrist import ZbrHash
 
 from enum import Enum
 from copy import deepcopy
@@ -17,7 +18,7 @@ class GameState(Enum):
     STALEMATE = 3
 
 class PositionProperties:
-    def __init__(self, turn: Side, castle_rights: dict, duck=None, en_passant=None, game_state: GameState=None, move: Move=None, capture: Piece=None):
+    def __init__(self, turn: Side, castle_rights: dict, duck=None, en_passant=None, game_state: GameState=None, move: Move=None, capture: Piece=None, zbr_hash: int=None):
         self.turn = turn
         self.castle_rights = castle_rights
         self.duck = duck
@@ -25,6 +26,7 @@ class PositionProperties:
         self.game_state = game_state
         self.move = move
         self.capture = capture
+        self.zbr_hash = zbr_hash
 
 class Board:
     def __init__(self, init_position=True):
@@ -54,11 +56,11 @@ class Board:
 
         self.turn = Side.WHITE
         self.castle_rights = consts.EMPTY
-        self.en_passant = None
+        self.en_passant = consts.EMPTY
         self.game_state = GameState.ONGOING
+        self.zbr_hash = ZbrHash(self)
 
         self.stack = []
-
         self.mailbox = []
 
         if init_position:
@@ -91,13 +93,12 @@ class Board:
 
         self.turn = Side.WHITE
         self.castle_rights = consts.INIT_CASTLE_RIGHTS
-        self.en_passant = None
+        self.en_passant = consts.EMPTY
         self.game_state = GameState.ONGOING
+        self.zbr_hash = ZbrHash(self)
 
         self.stack = []
-
         self.mailbox = []
-        self.update_mailbox()
 
     def from_fen_string(string: str):
         """ Creates a board from a FEN-style string """
@@ -143,6 +144,7 @@ class Board:
             board.castle_rights |= squares.masks[squares.h8]
 
         board.update_aggregate_boards()
+        board.zbr_hash = ZbrHash(board)
 
         return board
 
@@ -193,21 +195,23 @@ class Board:
         """ Advances the turn order without making a move.
         """
         self.turn = sides.advance_turn(self.turn)
+        self.zbr_hash.update(self, None)
 
     def make_move(self, move: Move):
         """ Applies the provided move to the board.
             IMPORTANT: This method assumes a legal move is passed.
         """
         # Update property stack
-        self.stack.append(PositionProperties(
-            self.turn,
-            self.castle_rights,
-            self.duck,
-            self.en_passant,
-            self.game_state,
-            move
-        ))
-
+        properties = PositionProperties(
+            turn=self.turn,
+            castle_rights=self.castle_rights,
+            duck=self.duck,
+            en_passant=self.en_passant,
+            game_state=self.game_state,
+            move=move,
+            capture=None,
+            zbr_hash=self.zbr_hash.hash
+        )
         from_mask = squares.masks[move.from_index] if move.from_index is not None else None
         to_mask = squares.masks[move.to_index] if move.to_index is not None else None
         opponent = Side.WHITE if self.turn in (Side.BLACK, Side.BLACK_DUCK) else Side.BLACK
@@ -249,7 +253,7 @@ class Board:
             for piece in self.pieces[opponent]:
                 if self.pieces[opponent][piece] & to_mask:
                     self.pieces[opponent][piece] ^= to_mask
-                    self.stack[-1].capture = piece
+                    properties.capture = piece
                     break
 
         # Other moves
@@ -258,7 +262,7 @@ class Board:
             if move.piece:
                 self.pieces[self.turn][move.piece] ^= (from_mask | to_mask)
             else:
-                # For manual moves, we don't know which piece is being move so we have
+                # For manual moves, we don't know which piece is being moved so we have
                 # to search for it.
                 for piece in self.pieces[self.turn]:
                     if self.pieces[self.turn][piece] & from_mask:
@@ -269,15 +273,22 @@ class Board:
             for piece in self.pieces[opponent]:
                 if self.pieces[opponent][piece] & to_mask:
                     self.pieces[opponent][piece] ^= to_mask
-                    self.stack[-1].capture = piece
+                    properties.capture = piece
 
-                    # Update castle right for captured rooks
+                    # Update castle rights for captured rooks
                     if piece == Piece.ROOK and to_mask & self.castle_rights:
                         self.castle_rights ^= to_mask
                     break
 
-        # Update aggregate bitboards
+        if move.move_type == MoveType.PAWN_CAPTURE_PROMOTION and properties.capture is None:
+            print("Something went horribly wrong...")
+            pass
+
+        self.stack.append(properties)
+
+        # Update aggregate bitboards and hash
         self.update_aggregate_boards()
+        self.zbr_hash.update(self, move)
 
         # If the moved piece was a king or rook, update castling rights
         if move.piece == Piece.KING:
@@ -348,6 +359,7 @@ class Board:
                 
         # Update aggregate bitboards
         self.update_aggregate_boards()
+        self.zbr_hash.revert(properties, move)
 
     def update_mailbox(self):
         """ Returns the current board state in mailbox format (i.e.,
