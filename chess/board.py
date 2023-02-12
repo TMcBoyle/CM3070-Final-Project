@@ -18,7 +18,7 @@ class GameState(Enum):
     STALEMATE = 3
 
 class PositionProperties:
-    def __init__(self, turn: Side, castle_rights: dict, duck=None, en_passant=None, game_state: GameState=None, move: Move=None, capture: Piece=None, zbr_hash: int=None):
+    def __init__(self, turn: Side, castle_rights: dict, duck=None, en_passant=None, game_state: GameState=None, move: Move=None, capture: Piece=None):
         self.turn = turn
         self.castle_rights = castle_rights
         self.duck = duck
@@ -26,7 +26,6 @@ class PositionProperties:
         self.game_state = game_state
         self.move = move
         self.capture = capture
-        self.zbr_hash = zbr_hash
 
 class Board:
     def __init__(self, init_position=True):
@@ -58,7 +57,6 @@ class Board:
         self.castle_rights = consts.EMPTY
         self.en_passant = consts.EMPTY
         self.game_state = GameState.ONGOING
-        self.zbr_hash = ZbrHash(self)
 
         self.stack = []
         self.mailbox = []
@@ -95,7 +93,6 @@ class Board:
         self.castle_rights = consts.INIT_CASTLE_RIGHTS
         self.en_passant = consts.EMPTY
         self.game_state = GameState.ONGOING
-        self.zbr_hash = ZbrHash(self)
 
         self.stack = []
         self.mailbox = []
@@ -148,7 +145,6 @@ class Board:
             board.castle_rights |= squares.masks[squares.h8]
 
         board.update_aggregate_boards()
-        board.zbr_hash = ZbrHash(board)
 
         return board
 
@@ -199,7 +195,6 @@ class Board:
         """ Advances the turn order without making a move.
         """
         self.turn = sides.advance_turn(self.turn)
-        self.zbr_hash.update(self, None)
 
     def make_move(self, move: Move):
         """ Applies the provided move to the board.
@@ -213,8 +208,7 @@ class Board:
             en_passant=self.en_passant,
             game_state=self.game_state,
             move=move,
-            capture=None,
-            zbr_hash=self.zbr_hash.hash
+            capture=None
         )
         from_mask = squares.masks[move.from_index] if move.from_index is not None else None
         to_mask = squares.masks[move.to_index] if move.to_index is not None else None
@@ -288,7 +282,6 @@ class Board:
 
         # Update aggregate bitboards and hash
         self.update_aggregate_boards()
-        self.zbr_hash.update(self, move)
 
         # If the moved piece was a king or rook, update castling rights
         if move.piece == Piece.KING:
@@ -305,7 +298,7 @@ class Board:
         """
         if not self.stack:
             return
-        properties = self.stack.pop()
+        properties: PositionProperties = self.stack.pop()
         self.turn = properties.turn
         self.castle_rights = properties.castle_rights
         self.en_passant = properties.en_passant
@@ -359,7 +352,6 @@ class Board:
                 
         # Update aggregate bitboards
         self.update_aggregate_boards()
-        self.zbr_hash.revert(properties, move)
 
     def update_mailbox(self):
         """ Returns the current board state in mailbox format (i.e.,
