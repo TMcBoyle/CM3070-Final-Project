@@ -129,8 +129,12 @@ class Board:
         # Set turn
         if turn == "w":
             board.turn = Side.WHITE
+        elif turn == "w@":
+            board.turn = Side.WHITE_DUCK
         elif turn == "b":
             board.turn = Side.BLACK
+        elif turn == "b@":
+            board.turn = Side.BLACK_DUCK
 
         # Set castling rights
         board.castle_rights = consts.EMPTY
@@ -279,10 +283,6 @@ class Board:
                     if piece == Piece.ROOK and to_mask & self.castle_rights:
                         self.castle_rights ^= to_mask
                     break
-
-        if move.move_type == MoveType.PAWN_CAPTURE_PROMOTION and properties.capture is None:
-            print("Something went horribly wrong...")
-            pass
 
         self.stack.append(properties)
 

@@ -97,33 +97,43 @@ class ZbrHash:
     def update(self, board, move: Move=None):
         """ Incrementally updates the hash. """
         if board.duck != self.duck:
-            self.hash ^= self.duck
-            self.hash ^= board.duck
+            self.hash ^= _duck[self.duck]
+            self.hash ^= _duck[board.duck]
             self.duck = board.duck
         if board.castle_rights != self.castle_rights:
-            self.hash ^= self.castle_rights
-            self.hash ^= board.castle_rights
+            self.hash ^= _castle_rights[self.castle_rights]
+            self.hash ^= _castle_rights[board.castle_rights]
             self.castle_rights = board.castle_rights
         if board.en_passant != self.en_passant:
-            self.hash ^= self.en_passant
-            self.hash ^= board.en_passant
+            self.hash ^= _en_passant[self.en_passant]
+            self.hash ^= _en_passant[board.en_passant]
             self.en_passant = board.en_passant
         if board.turn != self.turn:
             self.hash ^= _turns[self.turn]
             self.hash ^= _turns[board.turn]
             self.turn = board.turn
         
-        if move and move.move_type != MoveType.DUCK:
+        if not move:
+            return
+        
+        if move.move_type == MoveType.CASTLE_KINGSIDE:
+            pass
+        elif move.move_type == MoveType.CASTLE_QUEENSIDE:
+            pass
+        elif move.move_type == MoveType.PAWN_PROMOTION:
+            pass
+        elif move.move_type == MoveType.PAWN_CAPTURE_PROMOTION:
+            pass
+        else:
+            # Remove pieces on the to/from indices
             if self.pieces[move.from_index]:
-                # Remove the moved piece
                 self.hash ^= self.pieces[move.from_index]
-                self.pieces[move.from_index] = None
             if self.pieces[move.to_index]:
-                # Remove the target piece, if there is one
                 self.hash ^= self.pieces[move.to_index]
-            self.pieces[move.to_index] = _piece_lookup[
-                opposing_side(board.turn)
-            ][move.piece][move.to_index]
+            self.pieces[move.from_index] = _piece_lookup[opposing_side(self.turn)][move.piece][move.from_index]
+            self.pieces[move.to_index] = _piece_lookup[opposing_side(self.turn)][move.piece][move.to_index]
+            self.hash ^= self.pieces[move.from_index]
+            self.hash ^= self.pieces[move.to_index]
 
     def revert(self, properties, move: Move):
         """ Revert the hash to a previous state. """

@@ -63,17 +63,12 @@ class Goose(Agent):
             self.board.make_move(move)
             self.board.skip_move()
 
-            if self.board.zbr_hash.hash in self.lookup:
-                return self.lookup[self.board.zbr_hash.hash]
-
             score = -self.__negamax_ab(-beta, -alpha, depth - 1)
             self.board.unmake_move()
 
             if score >= beta:
-                self.lookup[self.board.zbr_hash.hash] = beta
                 return beta
             
-            self.lookup[self.board.zbr_hash.hash] = score
             if score > alpha:
                 alpha = score
         return alpha
