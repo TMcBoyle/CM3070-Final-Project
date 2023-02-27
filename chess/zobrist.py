@@ -15,7 +15,7 @@ _KEY_SIZE = (2 ** 64) - 1
 
 # Fixing the random seed allows for storing e.g., opening books 
 # or positions between sessions.
-zobrist_rng = random.Random(271082)
+zobrist_rng = random.Random() # 271082
 
 _sides = [Side.WHITE, Side.WHITE_DUCK, Side.BLACK, Side.BLACK_DUCK]
 _pieces = [

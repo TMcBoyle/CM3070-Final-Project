@@ -4,13 +4,13 @@ from enum import Enum
 from .sides import Side
 
 class Piece(Enum):
-    PAWN = "P"
-    KNIGHT = "N"
-    BISHOP = "B"
-    ROOK = "R"
-    QUEEN = "Q"
-    KING = "K"
-    DUCK = "@"
+    PAWN   = 1
+    KNIGHT = 2
+    BISHOP = 3
+    ROOK   = 4
+    QUEEN  = 5
+    KING   = 6
+    DUCK   = 7
 
 symbols = {
     Side.WHITE: {
@@ -45,5 +45,5 @@ symbol_lookup = {
     "r": (Side.BLACK, Piece.ROOK),
     "q": (Side.BLACK, Piece.QUEEN),
     "k": (Side.BLACK, Piece.KING),
-    "@": (None, Piece.DUCK),
+    "@": (None, Piece.DUCK)
 }

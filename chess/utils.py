@@ -3,6 +3,8 @@
 from . import squares
 from . import consts
 
+import numpy as np
+
 # Direction Class
 class Direction:
     """ Direction enum. Values correspond to the index shift in
@@ -71,12 +73,9 @@ def get_squares(board: int):
         bitboard containing a "1"
     """
     indices = []
-    index = 0
     while board > 0:
-        if board % 2 == 1:
-            indices.append(index)
-        index = index + 1
-        board = board >> 1
+        indices.append(((board & -board) - 1).bit_count())
+        board ^= 2 ** indices[-1]
 
     return indices
 
@@ -268,14 +267,6 @@ def hyperbola_quintessence(occupancy, mask, piece):
     reverse = reverse - rotate_180(piece) * 2
     forward = forward ^ rotate_180(reverse & consts.FILLED)
     return forward & mask
-
-# Population count algorithm - Brian Kernighan's method.
-def population_count(board):
-    count = 0
-    while board > 0:
-        count += 1
-        board &= board - 1
-    return count
 
 # Utility functions
 def pretty_string(bitboard):

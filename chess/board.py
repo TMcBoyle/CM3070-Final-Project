@@ -6,7 +6,6 @@ from .moves import *
 from .sides import Side
 from .pieces import Piece
 from . import squares
-from .zobrist import ZbrHash
 
 from enum import Enum
 from copy import deepcopy
@@ -18,11 +17,12 @@ class GameState(Enum):
     STALEMATE = 3
 
 class PositionProperties:
-    def __init__(self, turn: Side, castle_rights: dict, duck=None, en_passant=None, game_state: GameState=None, move: Move=None, capture: Piece=None):
+    def __init__(self, turn: Side, castle_rights: dict, duck=None, en_passant=None, legal_moves: list=None, game_state: GameState=None, move: Move=None, capture: Piece=None):
         self.turn = turn
         self.castle_rights = castle_rights
         self.duck = duck
         self.en_passant = en_passant
+        self.legal_moves = legal_moves
         self.game_state = game_state
         self.move = move
         self.capture = capture
@@ -57,6 +57,7 @@ class Board:
         self.castle_rights = consts.EMPTY
         self.en_passant = consts.EMPTY
         self.game_state = GameState.ONGOING
+        self.legal_moves = None
 
         self.stack = []
         self.mailbox = []
@@ -93,6 +94,7 @@ class Board:
         self.castle_rights = consts.INIT_CASTLE_RIGHTS
         self.en_passant = consts.EMPTY
         self.game_state = GameState.ONGOING
+        self.legal_moves = None
 
         self.stack = []
         self.mailbox = []
@@ -167,6 +169,8 @@ class Board:
     def get_legal_moves(self):
         if self.turn in (Side.WHITE_DUCK, Side.BLACK_DUCK):
             return duck_moves(self.occupied)
+        elif self.legal_moves:
+            return self.legal_moves
         
         if self.turn == Side.WHITE:
             allies = self.pieces[Side.WHITE]
@@ -189,6 +193,7 @@ class Board:
             self.occupied, self.castle_rights, self.turn
         )
 
+        self.legal_moves = legal_moves
         return legal_moves
 
     def skip_move(self):
@@ -206,6 +211,7 @@ class Board:
             castle_rights=self.castle_rights,
             duck=self.duck,
             en_passant=self.en_passant,
+            legal_moves=self.legal_moves,
             game_state=self.game_state,
             move=move,
             capture=None
@@ -290,6 +296,7 @@ class Board:
             self.castle_rights &= utils.invert(from_mask)
 
         self.turn = sides.advance_turn(self.turn)
+        self.legal_moves = None
         self.update_game_state()
 
     def unmake_move(self):
@@ -302,6 +309,7 @@ class Board:
         self.turn = properties.turn
         self.castle_rights = properties.castle_rights
         self.en_passant = properties.en_passant
+        self.legal_moves = properties.legal_moves
         self.game_state = properties.game_state
 
         move = properties.move
