@@ -166,11 +166,12 @@ class Board:
             self.black |= bitboard
         self.occupied = self.duck | self.white | self.black
 
-    def get_legal_moves(self):
+    def get_pseudolegal_moves(self):
+        """ Returns a list of pseudo-legal moves - this is effectively the
+            same as get_legal_moves, but it ignores the duck entirely.
+        """
         if self.turn in (Side.WHITE_DUCK, Side.BLACK_DUCK):
-            return duck_moves(self.occupied)
-        elif self.legal_moves:
-            return self.legal_moves
+            return duck_moves(self.occupied ^ self.duck)
         
         if self.turn == Side.WHITE:
             allies = self.pieces[Side.WHITE]
@@ -181,14 +182,47 @@ class Board:
             enemies = self.white
             blockers = self.black
 
+        duckless_occupation = self.occupied ^ self.duck
+
+        pseudolegal_moves = []
+        pseudolegal_moves += pawn_pushes  (allies[Piece.PAWN],   duckless_occupation, self.turn)
+        pseudolegal_moves += pawn_captures(allies[Piece.PAWN],   enemies,             self.turn)
+        pseudolegal_moves += knight_moves (allies[Piece.KNIGHT], duckless_occupation, blockers)
+        pseudolegal_moves += bishop_moves (allies[Piece.BISHOP], duckless_occupation, blockers)
+        pseudolegal_moves += rook_moves   (allies[Piece.ROOK],   duckless_occupation, blockers)
+        pseudolegal_moves += queen_moves  (allies[Piece.QUEEN],  duckless_occupation, blockers)
+        pseudolegal_moves += king_moves   (allies[Piece.KING],   duckless_occupation, blockers)
+        pseudolegal_moves += castling(
+            self.occupied, self.castle_rights, self.turn
+        )
+
+        return pseudolegal_moves
+
+    def get_legal_moves(self):
+        """ Returns a list of legal moves.
+        """
+        if self.turn in (Side.WHITE_DUCK, Side.BLACK_DUCK):
+            return duck_moves(self.occupied)
+        elif self.legal_moves:
+            return self.legal_moves
+        
+        if self.turn == Side.WHITE:
+            allies = self.pieces[Side.WHITE]
+            enemies = self.black
+            blockers = self.white | self.duck
+        elif self.turn == Side.BLACK:
+            allies = self.pieces[Side.BLACK]
+            enemies = self.white
+            blockers = self.black | self.duck
+
         legal_moves = []
-        legal_moves += pawn_pushes(allies[Piece.PAWN], self.occupied, self.turn)
-        legal_moves += pawn_captures(allies[Piece.PAWN], enemies, self.turn)
-        legal_moves += knight_moves(allies[Piece.KNIGHT], self.occupied, blockers)
-        legal_moves += bishop_moves(allies[Piece.BISHOP], self.occupied, blockers)
-        legal_moves += rook_moves(allies[Piece.ROOK], self.occupied, blockers)
-        legal_moves += queen_moves(allies[Piece.QUEEN], self.occupied, blockers)
-        legal_moves += king_moves(allies[Piece.KING], self.occupied, blockers)
+        legal_moves += pawn_pushes  (allies[Piece.PAWN],   self.occupied, self.turn)
+        legal_moves += pawn_captures(allies[Piece.PAWN],   enemies,       self.turn)
+        legal_moves += knight_moves (allies[Piece.KNIGHT], self.occupied, blockers)
+        legal_moves += bishop_moves (allies[Piece.BISHOP], self.occupied, blockers)
+        legal_moves += rook_moves   (allies[Piece.ROOK],   self.occupied, blockers)
+        legal_moves += queen_moves  (allies[Piece.QUEEN],  self.occupied, blockers)
+        legal_moves += king_moves   (allies[Piece.KING],   self.occupied, blockers)
         legal_moves += castling(
             self.occupied, self.castle_rights, self.turn
         )
