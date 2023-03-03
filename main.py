@@ -8,7 +8,7 @@ import cProfile as cpr
 import pstats as ps
 
 def main():
-    gm = GameManager(Goose, Goose, output="verbose", save_games=True, random_order=True)
+    gm = GameManager(Goose, Agent, output="verbose", save_games=True, random_order=True)
     gm.start(1)
 
 if __name__ == "__main__":

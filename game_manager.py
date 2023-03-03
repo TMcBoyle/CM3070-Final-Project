@@ -28,17 +28,16 @@ class GameManager:
             self.board = Board()
 
             if self.players[self.order]:
-                self.white = self.players[self.order](self.board)
+                self.white = self.players[self.order]()
             if self.players[1 - self.order]:
-                self.black = self.players[1 - self.order](self.board)
+                self.black = self.players[1 - self.order]()
 
             while self.board.game_state == GameState.ONGOING:
                 if self.output == "board":
                     print(self.board)
 
                 moves.append(self.request_next_move())
-                self.board.make_move(moves[-1][1])
-                self.board.make_move(moves[-1][2])
+                self.update_board(moves[-1][1], moves[-1][2])
 
                 if self.output in ("board", "verbose"):
                     print(f"{moves[-1][1]}{moves[-1][2]} was played (eval {moves[-1][0]}).")
@@ -71,6 +70,22 @@ class GameManager:
             print(f"Match over. Final score: "\
                   f"{self.players[0]} {scores[0]} - "\
                   f"{self.players[1]} {scores[1]}")
+
+    def update_board(self, move: Move, duck: Move):
+        """ Update the board and notify the opponent of the 
+            played move.
+        """
+        # Notify the opposing agent which moves were played
+        if self.board.turn in (Side.WHITE, Side.WHITE_DUCK):
+            self.black.play_move(move)
+            self.black.play_move(duck)
+        elif self.board.turn in (Side.BLACK, Side.BLACK_DUCK):
+            self.white.play_move(move)
+            self.white.play_move(duck)
+        
+        # Apply the moves to the main board
+        self.board.make_move(move)
+        self.board.make_move(duck)
 
     def request_next_move(self):
         if self.board.turn in (Side.WHITE, Side.WHITE_DUCK) and self.white:

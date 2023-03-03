@@ -6,6 +6,7 @@ from .moves import *
 from .sides import Side
 from .pieces import Piece
 from . import squares
+from .zobrist import ZbrHash
 
 from enum import Enum
 from copy import deepcopy
@@ -17,7 +18,8 @@ class GameState(Enum):
     STALEMATE = 3
 
 class PositionProperties:
-    def __init__(self, turn: Side, castle_rights: dict, duck=None, en_passant=None, legal_moves: list=None, game_state: GameState=None, move: Move=None, capture: Piece=None):
+    def __init__(self, turn: Side, castle_rights: dict, duck=None, en_passant=None, legal_moves: list=None, 
+                       game_state: GameState=None, move: Move=None, capture: Piece=None, hash: ZbrHash=None):
         self.turn = turn
         self.castle_rights = castle_rights
         self.duck = duck
@@ -26,6 +28,7 @@ class PositionProperties:
         self.game_state = game_state
         self.move = move
         self.capture = capture
+        self.hash = hash
 
 class Board:
     def __init__(self, init_position=True):
