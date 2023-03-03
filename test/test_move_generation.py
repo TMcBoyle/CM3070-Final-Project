@@ -6,7 +6,7 @@ from chess.moves import Move, MoveType
 class TestMoveGeneration(unittest.TestCase):
     def test_starting_position(self):
         board = Board()
-        moves = board.get_legal_moves()        
+        moves = board.generate_moves()        
         self.assertEqual(len(moves), 20)
 
     def test_pawn_moves(self):

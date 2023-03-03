@@ -94,13 +94,13 @@ class GameManager:
             return self.black.get_next_move()
         # A human player is standing in for one or both agents
         else: 
-            legal_moves = self.board.get_legal_moves()
+            legal_moves = self.board.generate_moves()
             move = None
             while move not in legal_moves:
                 move = Move.from_string(input("Enter a move: "))
             self.board.make_move(move)
 
-            duck_moves = self.board.get_legal_moves()
+            duck_moves = self.board.generate_moves()
             duck = None
             while duck not in duck_moves:
                 duck = Move.from_string(input("Place the duck: "))

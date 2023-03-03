@@ -3,7 +3,7 @@
 from chess.board import Board
 from chess.moves import Move, MoveType
 from chess.sides import Side, opposing_side
-from chess.pieces import Piece
+from chess.pieces import PieceType
 
 from agent import Agent
 from chess import consts
@@ -76,7 +76,7 @@ class Swan(Agent):
     def play_move(self, move: Move):
         if move.move_type != MoveType.DUCK:
             if not self.current.children:
-                self.current.expand(self.board.get_legal_moves())
+                self.current.expand(self.board.generate_moves())
             
             for child in self.current.children:
                 if child.move == move:
@@ -93,7 +93,7 @@ class Swan(Agent):
         # If this node hasn't been expanded yet, do so now with
         # pseudolegal moves.
         if not node.children:
-            node.expand(self.board.get_pseudolegal_moves())
+            node.expand(self.board.generate_moves(pseudo=True))
 
         for child in sorted(node.children):
             # Set the current node and apply this move to the board
@@ -116,7 +116,7 @@ class Swan(Agent):
     def search(self, depth: int=1):
         self.eval_side = self.board.turn
 
-        legal_moves = self.board.get_legal_moves()
+        legal_moves = self.board.generate_moves()
         if not self.current.children:
             self.current.expand(legal_moves)
 
@@ -147,7 +147,7 @@ class Swan(Agent):
         self.current = selected_node
         self.board.make_move(selected_node.move)
 
-        duck_move = random.choice(self.board.get_legal_moves())
+        duck_move = random.choice(self.board.generate_moves())
         self.board.make_move(duck_move)
 
         return (best, selected_node.move, duck_move)

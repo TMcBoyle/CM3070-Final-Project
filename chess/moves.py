@@ -7,10 +7,10 @@ from . import pieces
 from . import sides
 
 import re
-from enum import Enum
+from enum import IntEnum
 
 # Move types enum
-class MoveType(Enum):
+class MoveType(IntEnum):
     MANUAL = -1
     PAWN_SINGLE = 0
     PAWN_DOUBLE = 1
@@ -31,7 +31,7 @@ class Move:
     """ Holds the from/to square indices of a move, 
         promoted piece, and any other relevant information.
     """
-    def __init__(self, move_type: MoveType, piece: pieces.Piece=None, from_index: int=None, to_index: int=None, promotion: pieces.Piece=None):
+    def __init__(self, move_type: MoveType, piece: pieces.PieceType=None, from_index: int=None, to_index: int=None, promotion: pieces.PieceType=None):
         self.move_type = move_type
         self.piece = piece
         self.from_index = from_index
@@ -53,7 +53,7 @@ class Move:
             to_label = move[1:3]
 
             result.move_type = MoveType.DUCK
-            result.piece = pieces.Piece.DUCK
+            result.piece = pieces.PieceType.DUCK
             result.to_index = squares.labels.index(to_label)
         elif move == "O-O":
             result.move_type = MoveType.CASTLE_KINGSIDE
@@ -72,14 +72,14 @@ class Move:
 
             if from_label[0] == to_label[0]:
                 result.move_type = MoveType.PAWN_PROMOTION
-                result.piece = pieces.Piece.PAWN
+                result.piece = pieces.PieceType.PAWN
             else:
                 result.move_type = MoveType.PAWN_CAPTURE_PROMOTION
-                result.piece = pieces.Piece.PAWN
+                result.piece = pieces.PieceType.PAWN
 
             result.from_index = squares.labels.index(from_label)
             result.to_index = squares.labels.index(to_label)
-            result.promotion = pieces.Piece(promotion)
+            result.promotion = pieces.PieceType(promotion)
     
         return result
 
@@ -209,7 +209,7 @@ def sliding_moves(
         occupation: int,
         blockers: int,
         move_type: MoveType=None,
-        piece: pieces.Piece=None
+        piece: pieces.PieceType=None
     ):
     """ Generates valid sliding moves from a given origin square,
         based on the provided occupation and blocker bitboards, along the
@@ -268,13 +268,13 @@ def pawn_pushes(origins: int, occupation: int, side: sides.Side):
     for target in utils.get_squares(single_pushes):
         # Check if the pawn should promote - if so, add possible promotions.
         if squares.masks[target] & promotion_rank:
-            for piece in pieces.Piece:
-                if piece in (pieces.Piece.PAWN, pieces.Piece.KING, pieces.Piece.DUCK):
+            for piece in pieces.PieceType:
+                if piece in (pieces.PieceType.PAWN, pieces.PieceType.KING, pieces.PieceType.DUCK):
                     continue
                 pawn_pushes.append(
                     Move(
                         move_type=MoveType.PAWN_PROMOTION,
-                        piece=pieces.Piece.PAWN,
+                        piece=pieces.PieceType.PAWN,
                         from_index=target - direction,
                         to_index=target,
                         promotion=piece
@@ -285,7 +285,7 @@ def pawn_pushes(origins: int, occupation: int, side: sides.Side):
             pawn_pushes.append(
                 Move(
                     move_type=MoveType.PAWN_SINGLE,
-                    piece=pieces.Piece.PAWN,
+                    piece=pieces.PieceType.PAWN,
                     from_index=target - direction,
                     to_index=target
                 )
@@ -295,7 +295,7 @@ def pawn_pushes(origins: int, occupation: int, side: sides.Side):
         pawn_pushes.append(
             Move(
                 move_type=MoveType.PAWN_DOUBLE,
-                piece=pieces.Piece.PAWN,
+                piece=pieces.PieceType.PAWN,
                 from_index=target - direction * 2,
                 to_index=target
             )
@@ -320,13 +320,13 @@ def pawn_captures(origins: int, enemies: int, side: sides.Side):
             # Check if this capture leads to a promotion.
             if squares.masks[target] & promotion_rank:
                 # If so, add possible promotions.
-                for piece in pieces.Piece:
-                    if piece in (pieces.Piece.PAWN, pieces.Piece.KING, pieces.Piece.DUCK):
+                for piece in pieces.PieceType:
+                    if piece in (pieces.PieceType.PAWN, pieces.PieceType.KING, pieces.PieceType.DUCK):
                         continue
                     pawn_captures.append(
                         Move(
                             move_type=MoveType.PAWN_CAPTURE_PROMOTION,
-                            piece=pieces.Piece.PAWN,
+                            piece=pieces.PieceType.PAWN,
                             from_index=pawn,
                             to_index=target,
                             promotion=piece
@@ -337,7 +337,7 @@ def pawn_captures(origins: int, enemies: int, side: sides.Side):
                 pawn_captures.append(
                     Move(
                         move_type=MoveType.PAWN_CAPTURE,
-                        piece=pieces.Piece.PAWN,
+                        piece=pieces.PieceType.PAWN,
                         from_index=pawn,
                         to_index=target
                     )
@@ -358,7 +358,7 @@ def knight_moves(origins: int, occupation: int, blockers: int):
             knight_moves.append(
                 Move(
                     move_type=MoveType.KNIGHT,
-                    piece=pieces.Piece.KNIGHT,
+                    piece=pieces.PieceType.KNIGHT,
                     from_index=knight,
                     to_index=target
                 )
@@ -382,7 +382,7 @@ def bishop_moves(origins: int, occupation: int, blockers: int):
             occupation,
             blockers,
             MoveType.BISHOP,
-            pieces.Piece.BISHOP
+            pieces.PieceType.BISHOP
         )
     return bishop_moves
 
@@ -403,7 +403,7 @@ def rook_moves(origins: int, occupation: int, blockers: int):
             occupation,
             blockers,
             MoveType.ROOK,
-            pieces.Piece.ROOK
+            pieces.PieceType.ROOK
         )
     return rook_moves
 
@@ -426,7 +426,7 @@ def queen_moves(origins: int, occupation: int, blockers: int):
             occupation,
             blockers,
             MoveType.QUEEN,
-            pieces.Piece.QUEEN
+            pieces.PieceType.QUEEN
         )
     return queen_moves
 
@@ -444,7 +444,7 @@ def king_moves(origins: int, occupation: int, blockers: int):
             king_moves.append(
                 Move(
                     move_type=MoveType.KING,
-                    piece=pieces.Piece.KING,
+                    piece=pieces.PieceType.KING,
                     from_index=king,
                     to_index=target
                 )
@@ -486,7 +486,7 @@ def duck_moves(occupation):
         duck_moves.append(
             Move(
                 move_type=MoveType.DUCK,
-                piece=pieces.Piece.DUCK,
+                piece=pieces.PieceType.DUCK,
                 from_index=None,
                 to_index=target
             )

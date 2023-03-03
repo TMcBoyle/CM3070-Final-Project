@@ -4,9 +4,10 @@ from . import squares
 from . import consts
 
 import numpy as np
+from enum import IntEnum
 
 # Direction Class
-class Direction:
+class Direction(IntEnum):
     """ Direction enum. Values correspond to the index shift in
         that direction - this assumes the translation is valid (i.e.,
         you aren't trying to shift off the board).

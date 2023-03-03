@@ -2,8 +2,9 @@
     See https://www.chessprogramming.org/Zobrist_Hashing for 
     details on the method.
 """
+from .board import Board
 from .moves import Move, MoveType
-from .pieces import Piece
+from .pieces import PieceType
 from .sides import Side, opposing_side
 from .squares import *
 from .consts import *
@@ -19,7 +20,7 @@ zobrist_rng = random.Random() # 271082
 
 _sides = [Side.WHITE, Side.WHITE_DUCK, Side.BLACK, Side.BLACK_DUCK]
 _pieces = [
-    Piece.PAWN, Piece.KNIGHT, Piece.BISHOP, Piece.ROOK, Piece.QUEEN, Piece.KING
+    PieceType.PAWN, PieceType.KNIGHT, PieceType.BISHOP, PieceType.ROOK, PieceType.QUEEN, PieceType.KING
 ]
 _squares = [n for n in range(64)]
 
@@ -70,6 +71,21 @@ _en_passant = {
     file: zobrist_rng.randint(0, _KEY_SIZE) for file in LOOKUP_FILE
 }
 _en_passant[EMPTY] = EMPTY
+
+def zbr_hash(board: Board):
+    """ Calculates the Zobrist hash of a board from scratch.
+    """
+    zbr = 0
+    for side in board.boards.pieces:
+        for piece in board.boards.pieces[side]:
+            for square in get_squares(board.boards[side][piece]):
+                zbr ^= _piece_lookup[side][piece][square]
+    zbr ^= _duck[board.boards.duck]
+    zbr ^= _castle_rights[board.castle_rights]
+    zbr ^= _en_passant[board.en_passant]
+    zbr ^= _turns[board.turn]
+    
+    return zbr
 
 class ZbrHash:
     def __init__(self, board):
@@ -145,21 +161,21 @@ class ZbrHash:
         if move and move.move_type is not MoveType.DUCK:
             if move.move_type == MoveType.CASTLE_QUEENSIDE:
                 if properties.turn == Side.WHITE:
-                    self.pieces[h1] = _piece_lookup[Side.WHITE][Piece.ROOK][h1]
-                    self.pieces[e1] = _piece_lookup[Side.WHITE][Piece.KING][e1]
+                    self.pieces[h1] = _piece_lookup[Side.WHITE][PieceType.ROOK][h1]
+                    self.pieces[e1] = _piece_lookup[Side.WHITE][PieceType.KING][e1]
                 elif properties.turn == Side.BLACK:
-                    self.pieces[h8] = _piece_lookup[Side.BLACK][Piece.ROOK][h8]
-                    self.pieces[e8] = _piece_lookup[Side.BLACK][Piece.KING][e8]
+                    self.pieces[h8] = _piece_lookup[Side.BLACK][PieceType.ROOK][h8]
+                    self.pieces[e8] = _piece_lookup[Side.BLACK][PieceType.KING][e8]
             elif move.move_type == MoveType.CASTLE_QUEENSIDE:
                 if properties.turn == Side.WHITE:
-                    self.pieces[a1] = _piece_lookup[Side.WHITE][Piece.ROOK][a1]
-                    self.pieces[e1] = _piece_lookup[Side.WHITE][Piece.KING][e1]
+                    self.pieces[a1] = _piece_lookup[Side.WHITE][PieceType.ROOK][a1]
+                    self.pieces[e1] = _piece_lookup[Side.WHITE][PieceType.KING][e1]
                 elif properties.turn == Side.BLACK:
-                    self.pieces[a8] = _piece_lookup[Side.BLACK][Piece.ROOK][a8]
-                    self.pieces[e8] = _piece_lookup[Side.BLACK][Piece.KING][e8]
+                    self.pieces[a8] = _piece_lookup[Side.BLACK][PieceType.ROOK][a8]
+                    self.pieces[e8] = _piece_lookup[Side.BLACK][PieceType.KING][e8]
             elif move.move_type in (MoveType.PAWN_PROMOTION, MoveType.PAWN_CAPTURE_PROMOTION):
                 self.pieces[move.from_index] = \
-                    _piece_lookup[properties.turn][Piece.PAWN][move.from_index]
+                    _piece_lookup[properties.turn][PieceType.PAWN][move.from_index]
                 self.pieces[move.to_index] = \
                     _piece_lookup[properties.turn][move.promotion][move.to_index]
             else:

@@ -1,7 +1,7 @@
 """ Miscellaneous bitboard constants (e.g., A file, starting positions etc.).
 """
 from .sides import Side
-from .pieces import Piece
+from .pieces import PieceType
 
 # Fixed board constants (e.g., A file, 3rd rank, light squares etc.)
 # Miscellaneous
@@ -101,25 +101,25 @@ BLACK_CASTLE_RIGHTS = RANK_8 & (FILE_A | FILE_H)
 CASTLING_KINGSIDE = {
     Side.WHITE: {
         "BLOCKERS": (FILE_F | FILE_G) & RANK_1,
-        Piece.KING:     (FILE_E | FILE_G) & RANK_1,
-        Piece.ROOK:     (FILE_F | FILE_H) & RANK_1
+        PieceType.KING:     (FILE_E | FILE_G) & RANK_1,
+        PieceType.ROOK:     (FILE_F | FILE_H) & RANK_1
     },
     Side.BLACK: {
         "BLOCKERS": (FILE_F | FILE_G) & RANK_8,
-        Piece.KING: (FILE_E | FILE_G) & RANK_8,
-        Piece.ROOK: (FILE_F | FILE_H) & RANK_8
+        PieceType.KING: (FILE_E | FILE_G) & RANK_8,
+        PieceType.ROOK: (FILE_F | FILE_H) & RANK_8
     }
 }
 # Queenside
 CASTLING_QUEENSIDE = {
     Side.WHITE: {
         "BLOCKERS": (FILE_B | FILE_C | FILE_D) & RANK_1,
-        Piece.KING:     (FILE_E | FILE_C) & RANK_1,
-        Piece.ROOK:     (FILE_A | FILE_D) & RANK_1
+        PieceType.KING:     (FILE_E | FILE_C) & RANK_1,
+        PieceType.ROOK:     (FILE_A | FILE_D) & RANK_1
     },
     Side.BLACK: {
         "BLOCKERS": (FILE_B | FILE_C | FILE_D) & RANK_8,
-        Piece.KING: (FILE_E | FILE_C) & RANK_8,
-        Piece.ROOK: (FILE_F | FILE_H) & RANK_8
+        PieceType.KING: (FILE_E | FILE_C) & RANK_8,
+        PieceType.ROOK: (FILE_F | FILE_H) & RANK_8
     }
 }

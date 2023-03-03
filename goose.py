@@ -3,7 +3,7 @@
 from chess.board import Board
 from chess.moves import Move, MoveType
 from chess.sides import Side, opposing_side
-from chess.pieces import Piece
+from chess.pieces import PieceType
 
 from agent import Agent
 from chess import consts
@@ -30,12 +30,12 @@ class Goose(Agent):
         white = self.board.pieces[Side.WHITE]
         black = self.board.pieces[Side.BLACK]
         
-        pawn_diff   = white[Piece.PAWN].bit_count()   - black[Piece.PAWN].bit_count()
-        knight_diff = white[Piece.KNIGHT].bit_count() - black[Piece.KNIGHT].bit_count()
-        bishop_diff = white[Piece.BISHOP].bit_count() - black[Piece.BISHOP].bit_count()
-        rook_diff   = white[Piece.ROOK].bit_count()   - black[Piece.ROOK].bit_count()
-        queen_diff  = white[Piece.QUEEN].bit_count()  - black[Piece.QUEEN].bit_count()
-        king_diff   = white[Piece.KING].bit_count()   - black[Piece.KING].bit_count()
+        pawn_diff   = white[PieceType.PAWN].bit_count()   - black[PieceType.PAWN].bit_count()
+        knight_diff = white[PieceType.KNIGHT].bit_count() - black[PieceType.KNIGHT].bit_count()
+        bishop_diff = white[PieceType.BISHOP].bit_count() - black[PieceType.BISHOP].bit_count()
+        rook_diff   = white[PieceType.ROOK].bit_count()   - black[PieceType.ROOK].bit_count()
+        queen_diff  = white[PieceType.QUEEN].bit_count()  - black[PieceType.QUEEN].bit_count()
+        king_diff   = white[PieceType.KING].bit_count()   - black[PieceType.KING].bit_count()
 
         multiplier = 1 if self.board.turn == Side.BLACK else -1
         score = 0
@@ -54,7 +54,7 @@ class Goose(Agent):
     def play_move(self, move: Move):
         if move.move_type != MoveType.DUCK:
             if not self.current.children:
-                self.current.expand(self.board.get_legal_moves())
+                self.current.expand(self.board.generate_moves())
             
             for child in self.current.children:
                 if child.move == move:
@@ -72,7 +72,7 @@ class Goose(Agent):
         # If this node hasn't been expanded yet, do so now with
         # pseudolegal moves.
         if not node.children:
-            node.expand(self.board.get_pseudolegal_moves())
+            node.expand(self.board.generate_moves(pseudo=True))
 
         for child in sorted(node.children):
             # Set the current node and apply this move to the board
@@ -95,7 +95,7 @@ class Goose(Agent):
     def search(self, depth: int=1):
         self.eval_side = self.board.turn
 
-        legal_moves = self.board.get_legal_moves()
+        legal_moves = self.board.generate_moves()
         if not self.current.children:
             self.current.expand(legal_moves)
 
@@ -126,7 +126,7 @@ class Goose(Agent):
         self.current = selected_node
         self.board.make_move(selected_node.move)
 
-        duck_move = random.choice(self.board.get_legal_moves())
+        duck_move = random.choice(self.board.generate_moves())
         self.board.make_move(duck_move)
 
         return (best, selected_node.move, duck_move)
