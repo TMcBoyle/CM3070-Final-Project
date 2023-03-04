@@ -2,7 +2,6 @@
     See https://www.chessprogramming.org/Zobrist_Hashing for 
     details on the method.
 """
-from .board import Board
 from .moves import Move, MoveType
 from .pieces import PieceType
 from .sides import Side, opposing_side
@@ -72,13 +71,13 @@ _en_passant = {
 }
 _en_passant[EMPTY] = EMPTY
 
-def zbr_hash(board: Board):
+def zbr_hash(board):
     """ Calculates the Zobrist hash of a board from scratch.
     """
     zbr = 0
     for side in board.boards.pieces:
         for piece in board.boards.pieces[side]:
-            for square in get_squares(board.boards[side][piece]):
+            for square in get_squares(board.boards.pieces[side][piece]):
                 zbr ^= _piece_lookup[side][piece][square]
     zbr ^= _duck[board.boards.duck]
     zbr ^= _castle_rights[board.castle_rights]

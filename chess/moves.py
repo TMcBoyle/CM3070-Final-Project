@@ -107,7 +107,8 @@ class Move:
                f"to_index={self.to_index}, " \
                f"move_type={self.move_type}, " \
                f"piece={self.piece}, " \
-               f"promotion={self.promotion}>"
+               f"promotion={self.promotion}, " \
+               f"str={self.__str__()}>"
 
     def __str__(self):
         if self.move_type == MoveType.CASTLE_KINGSIDE:
@@ -477,7 +478,7 @@ def castling(occupation: int, rights: int, turn: sides.Side):
     return castle_moves
 
 # Duck move generation
-def duck_moves(occupation):
+def duck_moves(origin, occupation):
     """ Generates valid duck moves, taking into account its current
         position and board occupation.
     """
@@ -487,7 +488,7 @@ def duck_moves(occupation):
             Move(
                 move_type=MoveType.DUCK,
                 piece=pieces.PieceType.DUCK,
-                from_index=None,
+                from_index=utils.get_squares(origin) if origin else None,
                 to_index=target
             )
         )

@@ -3,10 +3,12 @@
 from enum import IntEnum
 from .sides import Side
 
-PIECE_MASK = 0x00111
+SIDE_MASK  = 0x111000
+PIECE_MASK = 0x000111
 
 class PieceType(IntEnum):
-    """ General piece type enum.
+    """ General piece type enum. Can be converted to a Piece by calculating
+        the value | a Side enum.
     """
     PAWN   = 0x001
     KNIGHT = 0x010
@@ -36,37 +38,20 @@ class Piece(IntEnum):
     DUCK     = 0x11111
 
 symbols = {
-    Side.WHITE: {
-        PieceType.PAWN: "P",
-        PieceType.KNIGHT: "N",
-        PieceType.BISHOP: "B",
-        PieceType.ROOK: "R",
-        PieceType.QUEEN: "Q",
-        PieceType.KING: "K"
-    },
-    Side.BLACK: {
-        PieceType.PAWN: "p",
-        PieceType.KNIGHT: "n",
-        PieceType.BISHOP: "b",
-        PieceType.ROOK: "r",
-        PieceType.QUEEN: "q",
-        PieceType.KING: "k"
-    },
-    PieceType.DUCK: "@"
+    Piece.EMPTY:    " ",
+    Piece.W_PAWN:   "P",
+    Piece.W_KNIGHT: "N",
+    Piece.W_BISHOP: "B",
+    Piece.W_ROOK:   "R",
+    Piece.W_QUEEN:  "Q",
+    Piece.W_KING:   "K",
+    Piece.B_PAWN:   "p",
+    Piece.B_KNIGHT: "n",
+    Piece.B_BISHOP: "b",
+    Piece.B_ROOK:   "r",
+    Piece.B_QUEEN:  "q",
+    Piece.B_KING:   "k",
+    Piece.DUCK:     "@"
 }
 
-symbol_lookup = {
-    "P": (Side.WHITE, PieceType.PAWN),
-    "N": (Side.WHITE, PieceType.KNIGHT),
-    "B": (Side.WHITE, PieceType.BISHOP),
-    "R": (Side.WHITE, PieceType.ROOK),
-    "Q": (Side.WHITE, PieceType.QUEEN),
-    "K": (Side.WHITE, PieceType.KING),
-    "p": (Side.BLACK, PieceType.PAWN),
-    "n": (Side.BLACK, PieceType.KNIGHT),
-    "b": (Side.BLACK, PieceType.BISHOP),
-    "r": (Side.BLACK, PieceType.ROOK),
-    "q": (Side.BLACK, PieceType.QUEEN),
-    "k": (Side.BLACK, PieceType.KING),
-    "@": (None, PieceType.DUCK)
-}
+symbol_lookup = {val: key for key, val in symbols.items()}

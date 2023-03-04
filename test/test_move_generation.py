@@ -11,7 +11,7 @@ class TestMoveGeneration(unittest.TestCase):
 
     def test_pawn_moves(self):
         board = Board.from_fen_string("1k6/8/8/5pp1/4pPP1/1PpP4/P1P1P3/1K6 w - - 0 1")
-        moves = board.get_legal_moves()
+        moves = board.generate_moves()
         moves = {m for m in moves if m.move_type != MoveType.KING}
 
         expected = {
@@ -29,7 +29,7 @@ class TestMoveGeneration(unittest.TestCase):
 
     def test_pawn_promotions(self):
         board = Board.from_fen_string("r3k3/1P6/8/8/8/8/8/4K3 w - - 0 1")
-        moves = board.get_legal_moves()
+        moves = board.generate_moves()
         moves = {m for m in moves if m.move_type != MoveType.KING}
         expected = {
             # Pushes
@@ -48,7 +48,7 @@ class TestMoveGeneration(unittest.TestCase):
 
     def test_knight_moves(self):
         board = Board.from_fen_string("4k3/8/3p2p1/p4P2/2N4N/P7/3P4/4K3 w - - 0 1")
-        moves = board.get_legal_moves()
+        moves = board.generate_moves()
         moves = {m for m in moves if m.move_type == MoveType.KNIGHT}
 
         expected = {
@@ -69,7 +69,7 @@ class TestMoveGeneration(unittest.TestCase):
 
     def test_bishop_moves(self):
         board = Board.from_fen_string("1k6/1P6/6p1/3p3B/4B3/2PP4/6p1/B5K1 w - - 0 1")
-        moves = board.get_legal_moves()
+        moves = board.generate_moves()
         moves = {m for m in moves if m.move_type == MoveType.BISHOP}
 
         expected = {
@@ -93,7 +93,7 @@ class TestMoveGeneration(unittest.TestCase):
 
     def test_rook_moves(self):
         board = Board.from_fen_string("8/6p1/P7/5bRP/3R4/3p4/R7/8 w - - 0 1")
-        moves = board.get_legal_moves()
+        moves = board.generate_moves()
         moves = {m for m in moves if m.move_type == MoveType.ROOK}
 
         expected = {
@@ -136,7 +136,7 @@ class TestMoveGeneration(unittest.TestCase):
 
     def test_queen_moves(self):
         board = Board.from_fen_string("8/4p1p1/1P2Q3/3P4/3Q4/8/1n2r3/8 w - - 0 1")
-        moves = board.get_legal_moves()
+        moves = board.generate_moves()
         moves = {m for m in moves if m.move_type == MoveType.QUEEN}
 
         expected = {
@@ -184,7 +184,7 @@ class TestMoveGeneration(unittest.TestCase):
 
     def test_king_moves(self):
         board = Board.from_fen_string("8/8/8/8/1p1r4/1PK5/3N4/8 w - - 0 1")
-        moves = board.get_legal_moves()
+        moves = board.generate_moves()
         moves = {m for m in moves if m.move_type == MoveType.KING}
 
         expected = {
@@ -201,7 +201,7 @@ class TestMoveGeneration(unittest.TestCase):
     def test_castling(self):
         # Base case, no obstruction, all castling rights
         board = Board.from_fen_string("4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1")
-        moves = board.get_legal_moves()
+        moves = board.generate_moves()
         moves = {
             m for m in moves
             if m.move_type in (
@@ -218,7 +218,7 @@ class TestMoveGeneration(unittest.TestCase):
 
         # As above, no castling rights
         board = Board.from_fen_string("4k3/8/8/8/8/8/8/R3K2R w - - 0 1")
-        moves = board.get_legal_moves()
+        moves = board.generate_moves()
         moves = {
             m for m in moves
             if m.move_type in (
@@ -232,7 +232,7 @@ class TestMoveGeneration(unittest.TestCase):
         
         # Case with blockers (allied and enemy)
         board = Board.from_fen_string("4k3/8/8/8/8/8/8/R1n1K1NR w KQ - 0 1")
-        moves = board.get_legal_moves()
+        moves = board.generate_moves()
         moves = {
             m for m in moves
             if m.move_type in (
@@ -254,7 +254,7 @@ class TestMoveGeneration(unittest.TestCase):
         board.skip_move()
         board.skip_move()
 
-        moves = board.get_legal_moves()
+        moves = board.generate_moves()
         moves = {
             m for m in moves
             if m.move_type in (
@@ -277,7 +277,7 @@ class TestMoveGeneration(unittest.TestCase):
         board.skip_move()
         board.skip_move()
 
-        moves = board.get_legal_moves()
+        moves = board.generate_moves()
         moves = {
             m for m in moves
             if m.move_type in (
@@ -296,7 +296,7 @@ class TestMoveGeneration(unittest.TestCase):
         # Skip to white's move
         board.skip_move()
 
-        moves = board.get_legal_moves()
+        moves = board.generate_moves()
         moves = {
             m for m in moves
             if m.move_type in (

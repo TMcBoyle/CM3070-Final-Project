@@ -124,7 +124,7 @@ class Board:
                     board.duck = squares.masks[idx]
                 # Pieces
                 else:
-                    piece = pieces.symbol_lookup[square] # Tuple(Side, Piece)
+                    piece = pieces.symbols[square] # Tuple(Side, Piece)
                     board.pieces[piece[0]][piece[1]] |= squares.masks[idx]
                 idx += 1
         
