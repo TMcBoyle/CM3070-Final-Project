@@ -5,7 +5,7 @@ from .consts import *
 from .moves import *
 from .pieces import Piece, PieceType, PIECE_MASK, SIDE_MASK
 from .sides import Side, next_turn, opposing_side
-from .zobrist import zbr_hash
+from .zobrist import zbr_hash, zbr_update
 
 from . import squares
 
@@ -100,6 +100,10 @@ class Board:
         en_passant = fields[3]
 
         board = Board()
+        board.mailbox = [Piece.EMPTY] * 64
+        for side in board.boards.pieces:
+            for piece in board.boards.pieces[side]:
+                board.boards.pieces[side][piece] = EMPTY
 
         idx = 0
         for rank in reversed(ranks.split("/")):
@@ -111,11 +115,13 @@ class Board:
                 # Duck
                 elif square == pieces.symbols[Piece.DUCK]:
                     board.duck = squares.masks[idx]
+                    board.mailbox[idx] = Piece.DUCK
                 # Pieces
                 else:
-                    piece = pieces.symbol_lookup[square] # Tuple(Side, Piece)
+                    piece = pieces.symbol_lookup[square]
                     board.boards.pieces[piece & SIDE_MASK][piece & PIECE_MASK] \
                         |= squares.masks[idx]
+                    board.mailbox[idx] = piece
                 idx += 1
         
         # Set turn
@@ -177,7 +183,7 @@ class Board:
         # Set bitboards to use based on the current turn.
         pieces = self.boards.pieces[self.turn]
         allies = self.boards.white if self.turn == Side.WHITE else self.boards.black
-        enemies = self.boards.white if self.turn == Side.WHITE else self.boards.black
+        enemies = self.boards.white if self.turn == Side.BLACK else self.boards.black
 
         # Generate the moves.
         moves = []
@@ -273,9 +279,13 @@ class Board:
             # Move the piece
             self.boards.pieces[self.turn][move.piece] ^= from_mask | to_mask
 
-            # If a rook was moved, update castle rights
+            # If a rook or king was moved, update castle rights
             if move.piece == PieceType.ROOK:
                 self.castle_rights ^= from_mask
+            elif move.piece == PieceType.KING:
+                self.castle_rights &= \
+                    BLACK_CASTLE_RIGHTS if self.turn == Side.WHITE \
+                    else WHITE_CASTLE_RIGHTS
 
             # Check for captures, remove the captured piece if needed
             if properties.capture != Piece.EMPTY:
@@ -302,8 +312,9 @@ class Board:
             self.mailbox[move.to_index] = Piece(self.turn | final_piece)
             self.mailbox[move.from_index] = Piece.EMPTY
         
-        # Update occupied board
+        # Update occupied board and Zobrist hash
         self.boards.occupied = self.boards.white | self.boards.black | self.boards.duck
+        self.zbr = zbr_update(self.zbr, self.turn, move, properties.capture)
 
         # Update game state
         self.turn = next_turn(self.turn)
@@ -402,8 +413,9 @@ class Board:
             self.mailbox[move.to_index] = properties.capture
             self.mailbox[move.from_index] = Piece(self.turn | move.piece)
         
-        # Update occupied board
+        # Update occupied board and Zobrist hash
         self.boards.occupied = self.boards.white | self.boards.black | self.boards.duck
+        self.zbr = properties.zbr
 
     def __str__(self):
         result = ""

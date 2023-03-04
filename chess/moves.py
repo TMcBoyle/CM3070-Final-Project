@@ -68,7 +68,7 @@ class Move:
         elif re.match("^([abcdefgh][1-8]){2}=[NBRQ]$", move):
             from_label = move[0:2]
             to_label = move[2:4]
-            promotion = move[-1]
+            promotion = pieces.piece_type_lookup[move[-1]]
 
             if from_label[0] == to_label[0]:
                 result.move_type = MoveType.PAWN_PROMOTION
@@ -468,7 +468,7 @@ def castling(occupation: int, rights: int, turn: sides.Side):
     castle_moves = []
     # Check for blockers.
     queenside_blockers = occupation & consts.CASTLING_QUEENSIDE[turn]["BLOCKERS"]
-    kingside_blockers  = occupation & consts.CASTLING_KINGSIDE[turn]["BLOCKERS"]
+    kingside_blockers  = occupation & consts.CASTLING_KINGSIDE [turn]["BLOCKERS"]
 
     if rights & consts.FILE_H and not kingside_blockers:
         castle_moves.append(Move(MoveType.CASTLE_KINGSIDE))

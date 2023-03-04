@@ -2,6 +2,7 @@
 """
 from .sides import Side
 from .pieces import PieceType
+from . import squares
 
 # Fixed board constants (e.g., A file, 3rd rank, light squares etc.)
 # Miscellaneous
@@ -101,11 +102,15 @@ BLACK_CASTLE_RIGHTS = RANK_8 & (FILE_A | FILE_H)
 CASTLING_KINGSIDE = {
     Side.WHITE: {
         "BLOCKERS": (FILE_F | FILE_G) & RANK_1,
-        PieceType.KING:     (FILE_E | FILE_G) & RANK_1,
-        PieceType.ROOK:     (FILE_F | FILE_H) & RANK_1
+        "KING_SQUARES": (squares.e1, squares.g1),
+        "ROOK_SQUARES": (squares.h1, squares.f1),
+        PieceType.KING: (FILE_E | FILE_G) & RANK_1,
+        PieceType.ROOK: (FILE_F | FILE_H) & RANK_1
     },
     Side.BLACK: {
         "BLOCKERS": (FILE_F | FILE_G) & RANK_8,
+        "KING_SQUARES": (squares.e8, squares.g8),
+        "ROOK_SQUARES": (squares.h8, squares.f8),
         PieceType.KING: (FILE_E | FILE_G) & RANK_8,
         PieceType.ROOK: (FILE_F | FILE_H) & RANK_8
     }
@@ -114,11 +119,15 @@ CASTLING_KINGSIDE = {
 CASTLING_QUEENSIDE = {
     Side.WHITE: {
         "BLOCKERS": (FILE_B | FILE_C | FILE_D) & RANK_1,
-        PieceType.KING:     (FILE_E | FILE_C) & RANK_1,
-        PieceType.ROOK:     (FILE_A | FILE_D) & RANK_1
+        "KING_SQUARES": (squares.e1, squares.c1),
+        "ROOK_SQUARES": (squares.a1, squares.d1),
+        PieceType.KING: (FILE_E | FILE_C) & RANK_1,
+        PieceType.ROOK: (FILE_A | FILE_D) & RANK_1
     },
     Side.BLACK: {
         "BLOCKERS": (FILE_B | FILE_C | FILE_D) & RANK_8,
+        "KING_SQUARES": (squares.e8, squares.c8),
+        "ROOK_SQUARES": (squares.a8, squares.d8),
         PieceType.KING: (FILE_E | FILE_C) & RANK_8,
         PieceType.ROOK: (FILE_F | FILE_H) & RANK_8
     }

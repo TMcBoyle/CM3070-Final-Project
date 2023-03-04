@@ -3,7 +3,7 @@
     details on the method.
 """
 from .moves import Move, MoveType
-from .pieces import PieceType
+from .pieces import Piece, PieceType
 from .sides import Side, opposing_side
 from .squares import *
 from .consts import *
@@ -15,29 +15,19 @@ _KEY_SIZE = (2 ** 64) - 1
 
 # Fixing the random seed allows for storing e.g., opening books 
 # or positions between sessions.
-zobrist_rng = random.Random() # 271082
+zobrist_rng = random.Random(271082) # 271082
 
 _sides = [Side.WHITE, Side.WHITE_DUCK, Side.BLACK, Side.BLACK_DUCK]
 _pieces = [
-    PieceType.PAWN, PieceType.KNIGHT, PieceType.BISHOP, PieceType.ROOK, PieceType.QUEEN, PieceType.KING
+    p for p in Piece
 ]
 _squares = [n for n in range(64)]
 
-# Initialising lookup table for sides/pieces/squares
-# Access as e.g., __hash_lookup[Side.WHITE][Piece.KNIGHT][squares.e4]
+# Initialising lookup tables
 _piece_lookup = {
-    side: {
-        piece: [
-            zobrist_rng.randint(0, _KEY_SIZE) for _ in _squares
-        ] for piece in _pieces
-    }
-    for side in [Side.WHITE, Side.BLACK]
+    piece: [zobrist_rng.randint(0, _KEY_SIZE) for _ in _squares]
+    for piece in _pieces
 }
-_duck = {
-    mask: zobrist_rng.randint(0, _KEY_SIZE)
-    for mask in masks
-}
-_duck[EMPTY] = EMPTY
 
 # Initialising other terms
 _turns = {
@@ -75,115 +65,36 @@ def zbr_hash(board):
     """ Calculates the Zobrist hash of a board from scratch.
     """
     zbr = 0
-    for side in board.boards.pieces:
-        for piece in board.boards.pieces[side]:
-            for square in get_squares(board.boards.pieces[side][piece]):
-                zbr ^= _piece_lookup[side][piece][square]
-    zbr ^= _duck[board.boards.duck]
+    for idx, piece in enumerate(board.mailbox):
+        zbr ^= _piece_lookup[piece][idx]
     zbr ^= _castle_rights[board.castle_rights]
     zbr ^= _en_passant[board.en_passant]
     zbr ^= _turns[board.turn]
     
     return zbr
 
-class ZbrHash:
-    def __init__(self, board):
-        """ Calculates the Zobrist hash of a board from scratch.
-        """
-        self.pieces = [None for _ in _squares]
-        self.duck = board.duck
-        self.castle_rights = board.castle_rights
-        self.en_passant = board.en_passant
-        self.turn = board.turn
+def zbr_update(zbr: int, side: Side, move: Move, capture: Piece=None):
+    """ Updates a Zobrist hash based on a given move.
+    """
+    # Castling
+    if move.move_type in (MoveType.CASTLE_KINGSIDE, MoveType.CASTLE_QUEENSIDE):
+        # Set variables depending on the type/side of the castling
+        castling_lookup = \
+            CASTLING_KINGSIDE if move.move_type == MoveType.CASTLE_KINGSIDE \
+            else CASTLING_QUEENSIDE
+        king_piece = Piece.W_KING if side == Side.WHITE else Piece.B_KING
+        rook_piece = Piece.W_ROOK if side == Side.WHITE else Piece.B_ROOK
 
-        self.hash = 0
-        for side in board.pieces:
-            for piece in board.pieces[side]:
-                for square in get_squares(board.pieces[side][piece]):
-                    self.pieces[square] = _piece_lookup[side][piece][square]
-                    self.hash ^= self.pieces[square]
-        self.hash ^= _duck[self.duck]
-        self.hash ^= _castle_rights[board.castle_rights]
-        self.hash ^= _en_passant[board.en_passant]
-        self.hash ^= _turns[board.turn]
-        
-        self.history = [self.hash]
-
-    def update(self, board, move: Move=None):
-        """ Incrementally updates the hash. """
-        if board.duck != self.duck:
-            self.hash ^= _duck[self.duck]
-            self.hash ^= _duck[board.duck]
-            self.duck = board.duck
-        if board.castle_rights != self.castle_rights:
-            self.hash ^= _castle_rights[self.castle_rights]
-            self.hash ^= _castle_rights[board.castle_rights]
-            self.castle_rights = board.castle_rights
-        if board.en_passant != self.en_passant:
-            self.hash ^= _en_passant[self.en_passant]
-            self.hash ^= _en_passant[board.en_passant]
-            self.en_passant = board.en_passant
-        if board.turn != self.turn:
-            self.hash ^= _turns[self.turn]
-            self.hash ^= _turns[board.turn]
-            self.turn = board.turn
-        
-        if not move:
-            return
-        
-        if move.move_type == MoveType.CASTLE_KINGSIDE:
-            pass
-        elif move.move_type == MoveType.CASTLE_QUEENSIDE:
-            pass
-        elif move.move_type == MoveType.PAWN_PROMOTION:
-            pass
-        elif move.move_type == MoveType.PAWN_CAPTURE_PROMOTION:
-            pass
-        else:
-            # Remove pieces on the to/from indices
-            if self.pieces[move.from_index]:
-                self.hash ^= self.pieces[move.from_index]
-            if self.pieces[move.to_index]:
-                self.hash ^= self.pieces[move.to_index]
-            self.pieces[move.from_index] = _piece_lookup[opposing_side(self.turn)][move.piece][move.from_index]
-            self.pieces[move.to_index] = _piece_lookup[opposing_side(self.turn)][move.piece][move.to_index]
-            self.hash ^= self.pieces[move.from_index]
-            self.hash ^= self.pieces[move.to_index]
-
-    def revert(self, properties, move: Move):
-        """ Revert the hash to a previous state. """
-        self.duck = properties.duck
-        self.castle_rights = properties.castle_rights
-        self.en_passant = properties.en_passant
-        self.turn = properties.turn        
-        
-        if move and move.move_type is not MoveType.DUCK:
-            if move.move_type == MoveType.CASTLE_QUEENSIDE:
-                if properties.turn == Side.WHITE:
-                    self.pieces[h1] = _piece_lookup[Side.WHITE][PieceType.ROOK][h1]
-                    self.pieces[e1] = _piece_lookup[Side.WHITE][PieceType.KING][e1]
-                elif properties.turn == Side.BLACK:
-                    self.pieces[h8] = _piece_lookup[Side.BLACK][PieceType.ROOK][h8]
-                    self.pieces[e8] = _piece_lookup[Side.BLACK][PieceType.KING][e8]
-            elif move.move_type == MoveType.CASTLE_QUEENSIDE:
-                if properties.turn == Side.WHITE:
-                    self.pieces[a1] = _piece_lookup[Side.WHITE][PieceType.ROOK][a1]
-                    self.pieces[e1] = _piece_lookup[Side.WHITE][PieceType.KING][e1]
-                elif properties.turn == Side.BLACK:
-                    self.pieces[a8] = _piece_lookup[Side.BLACK][PieceType.ROOK][a8]
-                    self.pieces[e8] = _piece_lookup[Side.BLACK][PieceType.KING][e8]
-            elif move.move_type in (MoveType.PAWN_PROMOTION, MoveType.PAWN_CAPTURE_PROMOTION):
-                self.pieces[move.from_index] = \
-                    _piece_lookup[properties.turn][PieceType.PAWN][move.from_index]
-                self.pieces[move.to_index] = \
-                    _piece_lookup[properties.turn][move.promotion][move.to_index]
-            else:
-                self.pieces[move.from_index] = \
-                    _piece_lookup[properties.turn][move.piece][move.from_index]
-                if properties.capture:
-                    self.pieces[move.to_index] = \
-                        _piece_lookup[opposing_side(properties.turn)][properties.capture][move.to_index]
-                else:
-                    self.pieces[move.to_index] = None
-
-        self.hash = properties.zbr_hash
+        # Update the hash
+        zbr ^= _piece_lookup[king_piece][castling_lookup["KING_SQUARES"][0]]
+        zbr ^= _piece_lookup[king_piece][castling_lookup["KING_SQUARES"][1]]
+        zbr ^= _piece_lookup[rook_piece][castling_lookup["ROOK_SQUARES"][0]]
+        zbr ^= _piece_lookup[rook_piece][castling_lookup["ROOK_SQUARES"][1]]
+    # Update the moved piece
+    else:
+        if move.from_index:
+            zbr ^= _piece_lookup[move.piece][move.from_index]
+        zbr ^= _piece_lookup[move.piece][move.to_index]
+        # Remove the captured piece, if applicable
+        if capture != Piece.EMPTY:
+            zbr ^= _piece_lookup[capture][move.to_index]

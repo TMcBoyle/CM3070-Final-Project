@@ -7,11 +7,11 @@ class TestBoard(unittest.TestCase):
         board = Board()
         fenboard = Board.from_fen_string("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
-        self.assertEqual(board.zbr_hash.hash, fenboard.zbr_hash.hash)
+        self.assertEqual(board.zbr, fenboard.zbr)
 
         board.skip_move()
         fenboard = Board.from_fen_string("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w@ KQkq - 0 1")
-        self.assertEqual(board.zbr_hash.hash, fenboard.zbr_hash.hash)
+        self.assertEqual(board.zbr, fenboard.zbr)
 
         board.skip_move()
         board.make_move(Move.from_string("e7e5"))
@@ -19,4 +19,4 @@ class TestBoard(unittest.TestCase):
 
         print(board)
         print(fenboard)
-        self.assertEqual(board.zbr_hash.hash, fenboard.zbr_hash.hash)
+        self.assertEqual(board.zbr, fenboard.zbr)

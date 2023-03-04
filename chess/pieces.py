@@ -55,3 +55,12 @@ symbols = {
 }
 
 symbol_lookup = {val: key for key, val in symbols.items()}
+piece_type_lookup = {
+    "P": PieceType.PAWN,
+    "N": PieceType.KNIGHT,
+    "B": PieceType.BISHOP,
+    "R": PieceType.ROOK,
+    "Q": PieceType.QUEEN,
+    "K": PieceType.KING,
+    "@": PieceType.DUCK
+}
