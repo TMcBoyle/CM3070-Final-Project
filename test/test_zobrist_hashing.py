@@ -2,7 +2,6 @@
 import unittest
 from chess.board import Board
 from chess.moves import Move, MoveType
-from chess.zobrist import ZbrHash
 
 class TestZobristHashing(unittest.TestCase):
     def test_make_move(self):

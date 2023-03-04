@@ -22,14 +22,14 @@ class GameState(IntEnum):
 class PositionProperties:
     """ Dataclass for storing the properties of a position.
     """
-    game_state: GameState
-    turn: Side
-    duck: int
-    castle_rights: int
-    en_passant: int
-    capture: PieceType
-    move: Move
-    zbr: int
+    game_state: GameState = None
+    turn: Side = None
+    duck: int = None
+    castle_rights: int = None
+    en_passant: int = None
+    capture: PieceType = None
+    move: Move = None
+    zbr: int = None
 
 @dataclass
 class PositionBoards:
@@ -155,6 +155,8 @@ class Board:
 
         board.boards.occupied = \
             board.boards.white | board.boards.black | board.boards.duck
+        
+        board.zbr = zbr_hash(board)
 
         return board
 
@@ -167,7 +169,12 @@ class Board:
     def skip_move(self):
         """ Advanced the turn order without making a move.
         """
+        previous = self.turn
         self.turn = sides.next_turn(self.turn)
+        self.zbr = zbr_update(self.zbr, (
+            PositionProperties(turn=previous, castle_rights=self.castle_rights, en_passant=self.en_passant),
+            PositionProperties(turn=self.turn, castle_rights=self.castle_rights, en_passant=self.en_passant)
+        ))
 
     def generate_moves(self, pseudo: bool=False):
         """ Returns a list of valid moves in the position. If
@@ -314,7 +321,13 @@ class Board:
         
         # Update occupied board and Zobrist hash
         self.boards.occupied = self.boards.white | self.boards.black | self.boards.duck
-        self.zbr = zbr_update(self.zbr, self.turn, move, properties.capture)
+        self.zbr = zbr_update(
+            self.zbr,
+            (self.history[-1], properties),
+            self.turn,
+            move,
+            properties.capture
+        )
 
         # Update game state
         self.turn = next_turn(self.turn)
@@ -400,7 +413,7 @@ class Board:
 
             # If a piece was captured, return it
             if properties.capture != Piece.EMPTY:
-                target_type = PieceType(properties.capture ^ PIECE_MASK)
+                target_type = PieceType(properties.capture & PIECE_MASK)
                 self.boards.pieces[opposing_side(self.turn)][target_type] ^= to_mask
 
             # Update aggregate boards

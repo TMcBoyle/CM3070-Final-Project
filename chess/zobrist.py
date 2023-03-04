@@ -73,9 +73,20 @@ def zbr_hash(board):
     
     return zbr
 
-def zbr_update(zbr: int, side: Side, move: Move, capture: Piece=None):
+def zbr_update(zbr: int, properties: tuple, side: Side=None, move: Move=None, capture: Piece=Piece.EMPTY):
     """ Updates a Zobrist hash based on a given move.
     """
+    # Update properties
+    zbr ^= _turns[properties[0].turn]
+    zbr ^= _turns[properties[1].turn]
+    zbr ^= _castle_rights[properties[0].castle_rights]
+    zbr ^= _castle_rights[properties[1].castle_rights]
+    zbr ^= _en_passant[properties[0].en_passant]
+    zbr ^= _en_passant[properties[1].en_passant]
+
+    if not side and not move:
+        return zbr
+
     # Castling
     if move.move_type in (MoveType.CASTLE_KINGSIDE, MoveType.CASTLE_QUEENSIDE):
         # Set variables depending on the type/side of the castling
@@ -92,9 +103,11 @@ def zbr_update(zbr: int, side: Side, move: Move, capture: Piece=None):
         zbr ^= _piece_lookup[rook_piece][castling_lookup["ROOK_SQUARES"][1]]
     # Update the moved piece
     else:
+        piece = move.piece ^ side if move.piece != PieceType.DUCK else Piece.DUCK
         if move.from_index:
-            zbr ^= _piece_lookup[move.piece][move.from_index]
-        zbr ^= _piece_lookup[move.piece][move.to_index]
+            zbr ^= _piece_lookup[piece][move.from_index]
+        zbr ^= _piece_lookup[piece][move.to_index]
         # Remove the captured piece, if applicable
         if capture != Piece.EMPTY:
             zbr ^= _piece_lookup[capture][move.to_index]
+    return zbr
