@@ -2,13 +2,20 @@
 from chess.board import Board
 from chess.moves import Move
 from math import inf as infinity
+from random import choice
+from enum import IntEnum
 
+class NodeType(IntEnum):
+    PV = 0
+    CUT = 1
+    
 class Node:
     def __init__(self, move: Move=None, parent: "Move"=None):
         self.move = move
         self.score = -infinity
         self.parent = parent
         self.children = []
+        self.zbr = None
 
     def expand(self, moves: list[Move]):
         for move in moves:

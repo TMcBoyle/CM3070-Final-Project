@@ -7,10 +7,17 @@ from chess.pieces import PieceType
 
 from agent import Agent
 from chess import consts
-from search import Node
+from chess.search.node import Node
 
 import random
+from dataclasses import dataclass
 from math import inf as infinity
+
+@dataclass
+class Stats:
+    nodes_searched: int = 0
+    transpositions: int = 0
+    alpha_beta_cutoffs: int = 0
 
 class Goose(Agent):
     EVAL_PAWN_VALUE   = 1
@@ -23,12 +30,13 @@ class Goose(Agent):
     def __init__(self):
         self.board:     Board = Board()
         self.eval_side: Side  = self.board.turn
-        self.root:      Node  = Node()
-        self.current:   Node  = self.root
+        self.current:   Node  = Node()
+        self.stats = Stats()
+        self.transpositions = {}
 
-    def evaluate(self):
-        white = self.board.pieces[Side.WHITE]
-        black = self.board.pieces[Side.BLACK]
+    def evaluate(board: Board):
+        white = board.boards.pieces[Side.WHITE]
+        black = board.boards.pieces[Side.BLACK]
         
         pawn_diff   = white[PieceType.PAWN].bit_count()   - black[PieceType.PAWN].bit_count()
         knight_diff = white[PieceType.KNIGHT].bit_count() - black[PieceType.KNIGHT].bit_count()
@@ -37,7 +45,7 @@ class Goose(Agent):
         queen_diff  = white[PieceType.QUEEN].bit_count()  - black[PieceType.QUEEN].bit_count()
         king_diff   = white[PieceType.KING].bit_count()   - black[PieceType.KING].bit_count()
 
-        multiplier = 1 if self.board.turn == Side.BLACK else -1
+        multiplier = 1 if board.turn == Side.BLACK else -1
         score = 0
         score += pawn_diff   * Goose.EVAL_PAWN_VALUE   * multiplier 
         score += knight_diff * Goose.EVAL_KNIGHT_VALUE * multiplier 
@@ -59,6 +67,7 @@ class Goose(Agent):
             for child in self.current.children:
                 if child.move == move:
                     self.current = child
+                    self.current.parent = None
         self.board.make_move(move)
 
     def __negamax_ab(self, node: Node, alpha: float, beta: float, depth: int):
@@ -66,29 +75,40 @@ class Goose(Agent):
             https://www.chessprogramming.org/Alpha-Beta#Negamax_Framework
         """
         if depth == 0:
-            node.score = self.evaluate()
+            node.score = Goose.evaluate(self.board)
+            node.zbr = self.board.zbr
             return node.score
         
         # If this node hasn't been expanded yet, do so now with
         # pseudolegal moves.
         if not node.children:
             node.expand(self.board.generate_moves(pseudo=True))
+        node.children.sort()
 
-        for child in sorted(node.children):
+        for idx, child in enumerate(node.children):
+            self.stats.nodes_searched += 1
             # Set the current node and apply this move to the board
             self.board.make_move(child.move)
             # Skip the duck move
             self.board.skip_move()
 
-            score = -self.__negamax_ab(child, -beta, -alpha, depth - 1)
+            child.zbr = self.board.zbr
+            if child.zbr in self.transpositions:
+                self.stats.transpositions += 1
+                node.children[idx] = self.transpositions[child.zbr]
+            else:
+                self.transpositions[child.zbr] = child
+                child.score = -self.__negamax_ab(child, -beta, -alpha, depth - 1)
+
             self.board.unmake_move()
 
-            if score >= beta:
+            if child.score >= beta:
+                self.stats.alpha_beta_cutoffs += 1
                 node.score = beta
                 return beta
             
-            if score > alpha:
-                alpha = score
+            if child.score > alpha:
+                alpha = child.score
         node.score = alpha
         return alpha
         
@@ -98,11 +118,12 @@ class Goose(Agent):
         legal_moves = self.board.generate_moves()
         if not self.current.children:
             self.current.expand(legal_moves)
+        self.current.children.sort()
 
         best = -infinity
         best_moves = []
         # For each legal move...
-        for child in sorted(self.current.children):
+        for idx, child in enumerate(self.current.children):
             # Skip illegal moves
             if child.move not in legal_moves:
                 continue
@@ -111,13 +132,20 @@ class Goose(Agent):
             # Skip the duck move as this isn't considered yet to cut down search space
             self.board.skip_move()
             # Search
-            score = self.__negamax_ab(child, -infinity, infinity, depth)
+            self.stats.nodes_searched += 1
+            child.zbr = self.board.zbr
+            if child.zbr in self.transpositions:
+                self.stats.transpositions += 1
+                self.current.children[idx] = self.transpositions[child.zbr]
+            else:
+                self.transpositions[child.zbr] = child
+                child.score = self.__negamax_ab(child, -infinity, infinity, depth)
 
             # Revert the move
             self.board.unmake_move()
 
-            if score > best - 0.05:
-                best = score if score > best else best
+            if child.score > best - 0.05:
+                best = child.score if child.score > best else best
                 best_moves.append(child)
 
         # Pick a candidate move at random

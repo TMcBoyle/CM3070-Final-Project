@@ -488,7 +488,7 @@ def duck_moves(origin, occupation):
             Move(
                 move_type=MoveType.DUCK,
                 piece=pieces.PieceType.DUCK,
-                from_index=utils.get_squares(origin) if origin else None,
+                from_index=utils.get_squares(origin)[0] if origin else None,
                 to_index=target
             )
         )

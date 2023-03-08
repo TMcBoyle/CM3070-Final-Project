@@ -72,7 +72,7 @@ class Board:
         self.boards = PositionBoards()
 
         self.turn = Side.WHITE
-        self.castle_rights = EMPTY
+        self.castle_rights = INIT_CASTLE_RIGHTS
         self.en_passant = EMPTY
         self.game_state = GameState.ONGOING
 
@@ -182,10 +182,11 @@ class Board:
             list is generated instead.
         """
         occupation = self.boards.occupied ^ (self.boards.duck if pseudo else EMPTY)
+        duck = self.boards.duck if not pseudo else EMPTY
 
         # Return just the duck moves if it's a duck turn.
         if self.turn in (Side.WHITE_DUCK, Side.BLACK_DUCK):
-            return duck_moves(self.duck, occupation)
+            return duck_moves(self.boards.duck, occupation)
         
         # Set bitboards to use based on the current turn.
         pieces = self.boards.pieces[self.turn]
@@ -196,11 +197,11 @@ class Board:
         moves = []
         moves += pawn_captures(pieces[PieceType.PAWN],   enemies,    self.turn)
         moves += pawn_pushes  (pieces[PieceType.PAWN],   occupation, self.turn)
-        moves += knight_moves (pieces[PieceType.KNIGHT], occupation, allies)
-        moves += bishop_moves (pieces[PieceType.BISHOP], occupation, allies)
-        moves += rook_moves   (pieces[PieceType.ROOK],   occupation, allies)
-        moves += queen_moves  (pieces[PieceType.QUEEN],  occupation, allies)
-        moves += king_moves   (pieces[PieceType.KING],   occupation, allies)
+        moves += knight_moves (pieces[PieceType.KNIGHT], occupation, allies | duck)
+        moves += bishop_moves (pieces[PieceType.BISHOP], occupation, allies | duck)
+        moves += rook_moves   (pieces[PieceType.ROOK],   occupation, allies | duck)
+        moves += queen_moves  (pieces[PieceType.QUEEN],  occupation, allies | duck)
+        moves += king_moves   (pieces[PieceType.KING],   occupation, allies | duck)
         moves += castling     (occupation, self.castle_rights, self.turn)
 
         return moves
@@ -216,16 +217,13 @@ class Board:
             duck=self.boards.duck,
             castle_rights=self.castle_rights,
             en_passant=self.en_passant,
-            capture=self.mailbox[move.to_index],
+            capture=Piece.EMPTY,
             move=move,
             zbr=self.zbr
         )
-        # Update history
-        self.history.append(properties)
-
         # Special cases - duck moves and castling
         if move.move_type == MoveType.DUCK:
-            self.duck = squares.masks[move.to_index]
+            self.boards.duck = squares.masks[move.to_index]
             # Update mailbox
             if move.from_index:
                 self.mailbox[move.from_index] = Piece.EMPTY
@@ -274,7 +272,7 @@ class Board:
                 BLACK_CASTLE_RIGHTS if self.turn == Side.WHITE else WHITE_CASTLE_RIGHTS
 
         # Normal moves
-        else:
+        else:            
             # If we don't know the piece type (for manual moves), set it
             if not move.piece:
                 move.piece = PieceType(self.mailbox[move.from_index] & PIECE_MASK)
@@ -286,22 +284,27 @@ class Board:
             # Move the piece
             self.boards.pieces[self.turn][move.piece] ^= from_mask | to_mask
 
-            # If a rook or king was moved, update castle rights
-            if move.piece == PieceType.ROOK:
-                self.castle_rights ^= from_mask
+            # If an unmoved rook or king was moved, update castle rights
+            if move.piece == PieceType.ROOK and (to_mask & INIT_CASTLE_RIGHTS):
+                self.castle_rights &= utils.invert(from_mask)
             elif move.piece == PieceType.KING:
                 self.castle_rights &= \
                     BLACK_CASTLE_RIGHTS if self.turn == Side.WHITE \
                     else WHITE_CASTLE_RIGHTS
 
             # Check for captures, remove the captured piece if needed
-            if properties.capture != Piece.EMPTY:
-                target_type = PieceType(properties.capture & PIECE_MASK)
+            capture = \
+                self.mailbox[move.to_index] if self.mailbox[move.to_index] != Piece.DUCK \
+                else Piece.EMPTY
+            
+            if capture != Piece.EMPTY:
+                properties.capture = capture
+                target_type = PieceType(capture & PIECE_MASK)
                 self.boards.pieces[opposing_side(self.turn)][target_type] ^= to_mask
                 
-                # If a rook was captured, update castling rights
-                if target_type == PieceType.ROOK:
-                    self.castle_rights ^= to_mask
+                # If an unmoved rook was captured, update castling rights
+                if target_type == PieceType.ROOK and (to_mask & INIT_CASTLE_RIGHTS):
+                    self.castle_rights &= utils.invert(to_mask)
 
             # Check for promotions
             if move.promotion:
@@ -319,6 +322,9 @@ class Board:
             self.mailbox[move.to_index] = Piece(self.turn | final_piece)
             self.mailbox[move.from_index] = Piece.EMPTY
         
+        # Update history
+        self.history.append(properties)
+
         # Update occupied board and Zobrist hash
         self.boards.occupied = self.boards.white | self.boards.black | self.boards.duck
         self.zbr = zbr_update(
@@ -345,7 +351,7 @@ class Board:
         properties: PositionProperties = self.history.pop()
         self.game_state = properties.game_state
         self.turn = properties.turn
-        self.duck = properties.duck
+        self.boards.duck = properties.duck
         self.castle_rights = properties.castle_rights
         self.en_passant = properties.en_passant
         self.zbr = properties.zbr

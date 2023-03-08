@@ -97,10 +97,10 @@ def zbr_update(zbr: int, properties: tuple, side: Side=None, move: Move=None, ca
         rook_piece = Piece.W_ROOK if side == Side.WHITE else Piece.B_ROOK
 
         # Update the hash
-        zbr ^= _piece_lookup[king_piece][castling_lookup["KING_SQUARES"][0]]
-        zbr ^= _piece_lookup[king_piece][castling_lookup["KING_SQUARES"][1]]
-        zbr ^= _piece_lookup[rook_piece][castling_lookup["ROOK_SQUARES"][0]]
-        zbr ^= _piece_lookup[rook_piece][castling_lookup["ROOK_SQUARES"][1]]
+        zbr ^= _piece_lookup[king_piece][castling_lookup[side]["KING_SQUARES"][0]]
+        zbr ^= _piece_lookup[king_piece][castling_lookup[side]["KING_SQUARES"][1]]
+        zbr ^= _piece_lookup[rook_piece][castling_lookup[side]["ROOK_SQUARES"][0]]
+        zbr ^= _piece_lookup[rook_piece][castling_lookup[side]["ROOK_SQUARES"][1]]
     # Update the moved piece
     else:
         piece = move.piece ^ side if move.piece != PieceType.DUCK else Piece.DUCK

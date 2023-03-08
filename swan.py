@@ -7,7 +7,7 @@ from chess.pieces import PieceType
 
 from agent import Agent
 from chess import consts
-from search import Node
+from chess.search.node import Node
 
 import random
 import numpy as np

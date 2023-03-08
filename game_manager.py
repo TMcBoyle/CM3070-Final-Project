@@ -70,6 +70,7 @@ class GameManager:
             print(f"Match over. Final score: "\
                   f"{self.players[0]} {scores[0]} - "\
                   f"{self.players[1]} {scores[1]}")
+        pass
 
     def update_board(self, move: Move, duck: Move):
         """ Update the board and notify the opponent of the 
