@@ -9,22 +9,22 @@ from . import sides
 import re
 from enum import IntEnum
 
-# Move types enum
 class MoveType(IntEnum):
-    MANUAL = -1
-    PAWN_SINGLE = 0
-    PAWN_DOUBLE = 1
-    PAWN_CAPTURE = 2
-    PAWN_PROMOTION = 3
-    PAWN_CAPTURE_PROMOTION = 4
-    KNIGHT = 5
-    BISHOP = 6
-    ROOK = 7
-    QUEEN = 8
-    KING = 9
-    CASTLE_KINGSIDE = 10
-    CASTLE_QUEENSIDE = 11
-    DUCK = 12
+    """ Move types enum - note that:
+
+        EN_PASSANT & CAPTURE == True
+        CAPTURE | PROMOTION == CAPTURE_PROMOTION
+    """
+    QUIET             = 0b_0000
+    DOUBLE_PAWN       = 0b_0011
+    CAPTURE           = 0b_1000
+    PROMOTION         = 0b_0100
+    EN_PASSANT        = 0b_1001
+    CAPTURE_PROMOTION = 0b_1100
+    CASTLE_KINGSIDE   = 0b_0001
+    CASTLE_QUEENSIDE  = 0b_0010
+    DUCK              = 0b10000
+    MANUAL = 0b110000
 
 # Move class
 class Move:
@@ -38,7 +38,7 @@ class Move:
         self.to_index = to_index
         self.promotion = promotion
 
-    def from_string(move: str, move_type: MoveType=MoveType.MANUAL):
+    def from_string(move: str, move_type: MoveType=None):
         """ Builds a move from an algebraic string. Example valid moves are:
             - e2e4
             - h7h8=Q
@@ -49,12 +49,21 @@ class Move:
             return None
 
         result = Move(move_type)
-        if re.match("^@[abcdefgh][1-8]$", move):
-            to_label = move[1:3]
+        if re.match("^@([abcdefgh][1-8]){1,2}$", move):
+            label_a = move[1:3]
+            try:
+                label_b = move[3:5]
+            except:
+                label_b = None
 
             result.move_type = MoveType.DUCK
             result.piece = pieces.PieceType.DUCK
-            result.to_index = squares.labels.index(to_label)
+
+            if label_b:
+                result.from_index = squares.labels.index(label_a)
+                result.to_index = squares.labels.index(label_b)
+            else:
+                result.to_index = squares.labels.index(label_a)
         elif move == "O-O":
             result.move_type = MoveType.CASTLE_KINGSIDE
         elif move == "O-O-O":
@@ -71,10 +80,10 @@ class Move:
             promotion = pieces.piece_type_lookup[move[-1]]
 
             if from_label[0] == to_label[0]:
-                result.move_type = MoveType.PAWN_PROMOTION
+                result.move_type = MoveType.PROMOTION
                 result.piece = pieces.PieceType.PAWN
             else:
-                result.move_type = MoveType.PAWN_CAPTURE_PROMOTION
+                result.move_type = MoveType.CAPTURE_PROMOTION
                 result.piece = pieces.PieceType.PAWN
 
             result.from_index = squares.labels.index(from_label)
@@ -117,7 +126,7 @@ class Move:
             return "O-O-O"
         elif self.move_type == MoveType.DUCK:
             return f"@{squares.labels[self.to_index]}"
-        elif self.move_type in (MoveType.PAWN_PROMOTION, MoveType.PAWN_CAPTURE_PROMOTION):
+        elif self.move_type & MoveType.PROMOTION:
             return f"{squares.labels[self.from_index]}{squares.labels[self.to_index]}={self.promotion}"
         else:
             return f"{squares.labels[self.from_index]}{squares.labels[self.to_index]}"
@@ -209,7 +218,6 @@ def sliding_moves(
         axes: list,
         occupation: int,
         blockers: int,
-        move_type: MoveType=None,
         piece: pieces.PieceType=None
     ):
     """ Generates valid sliding moves from a given origin square,
@@ -234,6 +242,9 @@ def sliding_moves(
     # Build the move objects
     moves = []
     for target in utils.get_squares(targets):
+        move_type = \
+            MoveType.QUIET if not squares.masks[target] & (occupation ^ blockers) \
+            else MoveType.CAPTURE
         moves.append(
             Move(
                 move_type=move_type,
@@ -274,7 +285,7 @@ def pawn_pushes(origins: int, occupation: int, side: sides.Side):
                     continue
                 pawn_pushes.append(
                     Move(
-                        move_type=MoveType.PAWN_PROMOTION,
+                        move_type=MoveType.PROMOTION,
                         piece=pieces.PieceType.PAWN,
                         from_index=target - direction,
                         to_index=target,
@@ -285,7 +296,7 @@ def pawn_pushes(origins: int, occupation: int, side: sides.Side):
         else:
             pawn_pushes.append(
                 Move(
-                    move_type=MoveType.PAWN_SINGLE,
+                    move_type=MoveType.QUIET,
                     piece=pieces.PieceType.PAWN,
                     from_index=target - direction,
                     to_index=target
@@ -295,7 +306,7 @@ def pawn_pushes(origins: int, occupation: int, side: sides.Side):
     for target in utils.get_squares(double_pushes):
         pawn_pushes.append(
             Move(
-                move_type=MoveType.PAWN_DOUBLE,
+                move_type=MoveType.DOUBLE_PAWN,
                 piece=pieces.PieceType.PAWN,
                 from_index=target - direction * 2,
                 to_index=target
@@ -326,7 +337,7 @@ def pawn_captures(origins: int, enemies: int, side: sides.Side):
                         continue
                     pawn_captures.append(
                         Move(
-                            move_type=MoveType.PAWN_CAPTURE_PROMOTION,
+                            move_type=MoveType.CAPTURE_PROMOTION,
                             piece=pieces.PieceType.PAWN,
                             from_index=pawn,
                             to_index=target,
@@ -337,7 +348,7 @@ def pawn_captures(origins: int, enemies: int, side: sides.Side):
             else:
                 pawn_captures.append(
                     Move(
-                        move_type=MoveType.PAWN_CAPTURE,
+                        move_type=MoveType.CAPTURE,
                         piece=pieces.PieceType.PAWN,
                         from_index=pawn,
                         to_index=target
@@ -356,9 +367,12 @@ def knight_moves(origins: int, occupation: int, blockers: int):
         template = KNIGHT_TEMPLATES[knight]
         targets = template & utils.invert(blockers)
         for target in utils.get_squares(targets):
+            move_type = \
+                MoveType.QUIET if not squares.masks[target] & (occupation ^ blockers) \
+                else MoveType.CAPTURE
             knight_moves.append(
                 Move(
-                    move_type=MoveType.KNIGHT,
+                    move_type=move_type,
                     piece=pieces.PieceType.KNIGHT,
                     from_index=knight,
                     to_index=target
@@ -382,7 +396,6 @@ def bishop_moves(origins: int, occupation: int, blockers: int):
             ],
             occupation,
             blockers,
-            MoveType.BISHOP,
             pieces.PieceType.BISHOP
         )
     return bishop_moves
@@ -403,7 +416,6 @@ def rook_moves(origins: int, occupation: int, blockers: int):
             ],
             occupation,
             blockers,
-            MoveType.ROOK,
             pieces.PieceType.ROOK
         )
     return rook_moves
@@ -426,7 +438,6 @@ def queen_moves(origins: int, occupation: int, blockers: int):
             ],
             occupation,
             blockers,
-            MoveType.QUEEN,
             pieces.PieceType.QUEEN
         )
     return queen_moves
@@ -441,10 +452,13 @@ def king_moves(origins: int, occupation: int, blockers: int):
         # Get the move template for this king.
         template = KING_TEMPLATES[king]
         targets = template & utils.invert(blockers)
-        for target in utils.get_squares(targets):
+        for target in utils.get_squares(targets):    
+            move_type = \
+                MoveType.QUIET if not squares.masks[target] & (occupation ^ blockers) \
+                else MoveType.CAPTURE
             king_moves.append(
                 Move(
-                    move_type=MoveType.KING,
+                    move_type=move_type,
                     piece=pieces.PieceType.KING,
                     from_index=king,
                     to_index=target

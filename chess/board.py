@@ -145,6 +145,10 @@ class Board:
         if "k" in castle_rights:
             board.castle_rights |= squares.masks[squares.h8]
 
+        # Set en passant
+        if en_passant != "-":
+            board.en_passant = squares.masks[squares.labels.index(en_passant)]
+
         # Set aggregate bitboards
         board.boards.white = EMPTY
         for bitboard in board.boards.pieces[Side.WHITE].values():
@@ -292,19 +296,27 @@ class Board:
                     BLACK_CASTLE_RIGHTS if self.turn == Side.WHITE \
                     else WHITE_CASTLE_RIGHTS
 
-            # Check for captures, remove the captured piece if needed
-            capture = \
-                self.mailbox[move.to_index] if self.mailbox[move.to_index] != Piece.DUCK \
-                else Piece.EMPTY
-            
-            if capture != Piece.EMPTY:
-                properties.capture = capture
-                target_type = PieceType(capture & PIECE_MASK)
-                self.boards.pieces[opposing_side(self.turn)][target_type] ^= to_mask
-                
-                # If an unmoved rook was captured, update castling rights
-                if target_type == PieceType.ROOK and (to_mask & INIT_CASTLE_RIGHTS):
-                    self.castle_rights &= utils.invert(to_mask)
+            # Check for captures, remove the captured piece if needed            
+            if move.move_type & MoveType.CAPTURE:
+                # En Passant needs to be handled differently
+                if move.move_type == MoveType.EN_PASSANT:
+                    capture_square = \
+                        move.to_index + utils.Direction.SOUTH if self.turn == Side.WHITE \
+                        else move.to_index + utils.Direction.NORTH
+                    capture_mask = squares.masks[capture_square]
+                    properties.capture = self.mailbox[capture_square]
+                    self.boards.pieces[opposing_side(self.turn)][PieceType.PAWN] ^= capture_mask
+                    # Update the mailbox
+                    self.mailbox[capture_square] = Piece.EMPTY
+
+                else:
+                    properties.capture = self.mailbox[move.to_index]
+                    target_type = PieceType(properties.capture & PIECE_MASK)
+                    self.boards.pieces[opposing_side(self.turn)][target_type] ^= to_mask
+                    
+                    # If an unmoved rook was captured, update castling rights
+                    if target_type == PieceType.ROOK and (to_mask & INIT_CASTLE_RIGHTS):
+                        self.castle_rights &= utils.invert(to_mask)
 
             # Check for promotions
             if move.promotion:
@@ -314,8 +326,18 @@ class Board:
             # Update aggregate boards
             if self.turn == Side.WHITE:
                 self.boards.white ^= from_mask | to_mask
+                if move.move_type & MoveType.CAPTURE:
+                    if move.move_type == MoveType.EN_PASSANT:
+                        self.boards.black ^= capture_mask
+                    else:
+                        self.boards.black ^= to_mask
             elif self.turn == Side.BLACK:
                 self.boards.black ^= from_mask | to_mask
+                if move.move_type & MoveType.CAPTURE:
+                    if move.move_type == MoveType.EN_PASSANT:
+                        self.boards.white ^= capture_mask
+                    else:
+                        self.boards.white ^= to_mask
 
             # Update the mailbox
             final_piece = move.piece if not move.promotion else move.promotion
@@ -418,18 +440,41 @@ class Board:
             self.boards.pieces[self.turn][move.piece] ^= from_mask | to_mask
 
             # If a piece was captured, return it
-            if properties.capture != Piece.EMPTY:
-                target_type = PieceType(properties.capture & PIECE_MASK)
-                self.boards.pieces[opposing_side(self.turn)][target_type] ^= to_mask
+            if move.move_type & MoveType.CAPTURE:
+                # En Passant needs to be handled differently
+                if move.move_type == MoveType.EN_PASSANT:
+                    capture_square = \
+                        move.to_index + utils.Direction.SOUTH if self.turn == Side.WHITE \
+                        else move.to_index + utils.Direction.NORTH
+                    capture_mask = squares.masks[capture_square]
+                    self.boards.pieces[opposing_side(self.turn)][PieceType.PAWN] ^= capture_mask
+                    # Update the mailbox
+                    self.mailbox[capture_square] = properties.capture
+                    
+                else:
+                    target_type = PieceType(properties.capture & PIECE_MASK)
+                    self.boards.pieces[opposing_side(self.turn)][target_type] ^= to_mask
 
             # Update aggregate boards
             if self.turn == Side.WHITE:
                 self.boards.white ^= from_mask | to_mask
+                if move.move_type & MoveType.CAPTURE:
+                    if move.move_type == MoveType.EN_PASSANT:
+                        self.boards.black ^= capture_mask
+                    else:
+                        self.boards.black ^= to_mask
             elif self.turn == Side.BLACK:
                 self.boards.black ^= from_mask | to_mask
+                if move.move_type & MoveType.CAPTURE:
+                    if move.move_type == MoveType.EN_PASSANT:
+                        self.boards.white ^= capture_mask
+                    else:
+                        self.boards.white ^= to_mask
             
             # Update the mailbox
-            self.mailbox[move.to_index] = properties.capture
+            self.mailbox[move.to_index] = \
+                properties.capture if move.move_type != MoveType.EN_PASSANT \
+                else Piece.EMPTY
             self.mailbox[move.from_index] = Piece(self.turn | move.piece)
         
         # Update occupied board and Zobrist hash

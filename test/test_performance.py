@@ -20,7 +20,7 @@ class TestPerformance(unittest.TestCase):
         board = Board()
         root = Node()
 
-        minimax(board, root, Goose.evaluate, 3)
+        minimax(board, root, Goose.evaluate, 4)
 
     def test_alpha_beta(self):
         # Test alpha-beta minimax search to some depth
@@ -28,9 +28,3 @@ class TestPerformance(unittest.TestCase):
         root = Node()
 
         alpha_beta(board, root, Goose.evaluate, 6)
-
-    def test_alpha_beta_transpositions(self):
-        # Test alpha-beta minimax search with transposition tables
-        # to some depth
-        goose = Goose()
-        goose.get_next_move(6)

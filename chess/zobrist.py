@@ -57,7 +57,7 @@ _castle_rights = {
 
 # En Passant
 _en_passant = {
-    file: zobrist_rng.randint(0, _KEY_SIZE) for file in LOOKUP_FILE
+    masks[square]: zobrist_rng.randint(0, _KEY_SIZE) for square in range(64)
 }
 _en_passant[EMPTY] = EMPTY
 

@@ -10,7 +10,7 @@ class NodeType(IntEnum):
     CUT = 1
     
 class Node:
-    def __init__(self, move: Move=None, parent: "Move"=None):
+    def __init__(self, move: Move=None, parent: "Node"=None):
         self.move = move
         self.score = -infinity
         self.parent = parent
