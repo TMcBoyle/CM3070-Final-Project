@@ -53,21 +53,19 @@ def minimax(board: Board, node: Node, eval_fn: callable, depth: int=1) -> Move:
 
     return (best_score, best_move, duck_move)
 
-def alpha_beta(board: Board, node: Node, eval_fn: callable, depth: int=1) -> Move:
-    def __alpha_beta_recursive(
-            node: Node, alpha: float, beta: float, eval_fn: callable, depth: int=depth-1
-        ):
-        if depth == 0:
-            node.score = eval_fn(board)
-            return node.score
+def alpha_beta(board: Board, node: Node, transpositions: dict, eval_fn: callable) -> tuple[Move, Move]:
+    def __alpha_beta_recursive(current: Node, alpha: float, beta: float, depth: int):
+        if depth <= 0:
+            return eval_fn(board)
         
-        if not node.children:
-            node.expand(board.generate_moves(pseudo=True))
-        
-        for child in node.children:
+        # Expand the current node if it hasn't already been
+        if not current.children:
+            current.expand(board.generate_moves(pseudo=True))
+
+        for child in current.children:
             board.make_move(child.move)
             board.skip_move()
-            child.score = -__alpha_beta_recursive(child, -beta, -alpha, eval_fn, depth-1)
+            child.score = __alpha_beta_recursive(child, -beta, -alpha, depth - 1)
             board.unmake_move()
 
             if child.score >= beta:
@@ -76,31 +74,30 @@ def alpha_beta(board: Board, node: Node, eval_fn: callable, depth: int=1) -> Mov
             elif child.score > alpha:
                 alpha = child.score
 
-        node.score = alpha
         return alpha
-
+        
     legal_moves = board.generate_moves()
     if not node.children:
         node.expand(legal_moves)
 
-    best_score = -infinity
     best_move = None
+    best_score = -infinity
 
     for child in node.children:
         if child.move not in legal_moves:
             continue
-
+        
         board.make_move(child.move)
         board.skip_move()
-        child.score = __alpha_beta_recursive(child, -infinity, infinity, eval_fn, depth-1)
+        child.score = __alpha_beta_recursive(child, -infinity, infinity, 4)
         board.unmake_move()
 
         if child.score > best_score:
-            best_score = child.score
             best_move = child.move
-    
+            best_score = child.score
+
     board.make_move(best_move)
     duck_move = random.choice(board.generate_moves())
-    board.make_move(duck_move)
+    board.unmake_move()
 
-    return (best_score, best_move, duck_move)
+    return (best_move, duck_move)

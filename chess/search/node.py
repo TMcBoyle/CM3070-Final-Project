@@ -6,16 +6,26 @@ from random import choice
 from enum import IntEnum
 
 class NodeType(IntEnum):
-    PV = 0
-    CUT = 1
+    """ Node Types as described by Tony Marshland and Fred Popowich
+        https://webdocs.cs.ualberta.ca/~tony/OldPapers/parallel.pdf
+    """
+    UNKNOWN = -1
+    PV  = 0 # Principal variation - the "main" moves
+    CUT = 1 # Cut nodes - nodes that failed a beta check
+    ALL = 2 # All nodes - nodes that failed an alpha check
     
 class Node:
     def __init__(self, move: Move=None, parent: "Node"=None):
         self.move = move
-        self.score = -infinity
         self.parent = parent
-        self.children = []
+
+        self.node_type = NodeType.UNKNOWN
         self.zbr = None
+        self.best_move = None
+        self.search_depth = 0
+        self.score = -infinity
+
+        self.children = []
 
     def expand(self, moves: list[Move]):
         for move in moves:
