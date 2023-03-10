@@ -76,13 +76,11 @@ class GameManager:
         """ Update the board and notify the opponent of the 
             played move.
         """
-        # Notify the opposing agent which moves were played
-        if self.board.turn in (Side.WHITE, Side.WHITE_DUCK):
-            self.black.play_move(move)
-            self.black.play_move(duck)
-        elif self.board.turn in (Side.BLACK, Side.BLACK_DUCK):
-            self.white.play_move(move)
-            self.white.play_move(duck)
+        # Notify the agents which moves were played
+        self.white.play_move(move)
+        self.white.play_move(duck)
+        self.black.play_move(move)
+        self.black.play_move(duck)
         
         # Apply the moves to the main board
         self.board.make_move(move)

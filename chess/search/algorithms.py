@@ -1,6 +1,7 @@
 from .node import Node
 from ..board import Board
 from ..moves import Move
+from ..sides import Side
 
 import random
 
@@ -53,10 +54,11 @@ def minimax(board: Board, node: Node, eval_fn: callable, depth: int=1) -> Move:
 
     return (best_score, best_move, duck_move)
 
-def alpha_beta(board: Board, node: Node, transpositions: dict, eval_fn: callable) -> tuple[Move, Move]:
+def alpha_beta(board: Board, node: Node, eval_fn: callable) -> tuple[Move, Move]:
     def __alpha_beta_recursive(current: Node, alpha: float, beta: float, depth: int):
         if depth <= 0:
-            return eval_fn(board)
+            current.score = eval_fn(board)
+            return current.score
         
         # Expand the current node if it hasn't already been
         if not current.children:

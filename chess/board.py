@@ -171,7 +171,7 @@ class Board:
             self.game_state = GameState.WHITE_WINS
 
     def skip_move(self):
-        """ Advanced the turn order without making a move.
+        """ Advanced the turn order without making a move. En passant state is preserved.
         """
         previous = self.turn
         self.turn = sides.next_turn(self.turn)
@@ -287,6 +287,15 @@ class Board:
 
             # Move the piece
             self.boards.pieces[self.turn][move.piece] ^= from_mask | to_mask
+
+            # Update en passant if needed
+            if move.move_type == MoveType.DOUBLE_PAWN:
+                ep_square = \
+                    move.to_index + utils.Direction.SOUTH if self.turn == Side.WHITE \
+                    else move.to_index + utils.Direction.NORTH
+                self.en_passant = squares.masks[ep_square]
+            else:
+                self.en_passant = consts.EMPTY
 
             # If an unmoved rook or king was moved, update castle rights
             if move.piece == PieceType.ROOK and (to_mask & INIT_CASTLE_RIGHTS):
