@@ -60,7 +60,6 @@ class Goose(Agent):
         return self.search()
 
     def play_move(self, move: Move):
-        self.board.make_move(move)
         if move.move_type != MoveType.DUCK:
             if not self.current.children:
                 self.current.expand(self.board.generate_moves())
@@ -70,6 +69,7 @@ class Goose(Agent):
                     self.current = child
                     self.current.parent = None
                     break
+        self.board.make_move(move)
         
     def search(self):
         self.eval_side = self.board.turn

@@ -91,7 +91,7 @@ def alpha_beta(board: Board, node: Node, eval_fn: callable) -> tuple[Move, Move]
         
         board.make_move(child.move)
         board.skip_move()
-        child.score = __alpha_beta_recursive(child, -infinity, infinity, 4)
+        child.score = __alpha_beta_recursive(child, -infinity, infinity, 2)
         board.unmake_move()
 
         if child.score > best_score:

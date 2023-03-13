@@ -131,20 +131,3 @@ class TestMailbox(unittest.TestCase):
         self.assertEqual(board.mailbox[squares.c1], Piece.EMPTY)
         self.assertEqual(board.mailbox[squares.d1], Piece.EMPTY)
         self.assertEqual(board.mailbox[squares.e1], Piece.W_KING)
-
-    def test_duck_move(self):
-        board = Board.from_fen_string("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w@ KQkq - 0 1")
-        white_move = Move.from_string("@c4", MoveType.DUCK)
-        black_move = Move.from_string("@c4f4", MoveType.DUCK)
-
-        board.make_move(white_move)
-        board.skip_move()
-        board.make_move(black_move)
-
-        self.assertEqual(board.mailbox[squares.c4], Piece.EMPTY)
-        self.assertEqual(board.mailbox[squares.f4], Piece.DUCK)
-
-        board.unmake_move()
-
-        self.assertEqual(board.mailbox[squares.c4], Piece.DUCK)
-        self.assertEqual(board.mailbox[squares.f4], Piece.EMPTY)

@@ -228,10 +228,6 @@ class Board:
         # Special cases - duck moves and castling
         if move.move_type == MoveType.DUCK:
             self.boards.duck = squares.masks[move.to_index]
-            # Update mailbox
-            if move.from_index:
-                self.mailbox[move.from_index] = Piece.EMPTY
-            self.mailbox[move.to_index] = Piece.DUCK
         elif move.move_type in (MoveType.CASTLE_KINGSIDE, MoveType.CASTLE_QUEENSIDE):
             castle_masks = \
                 CASTLING_KINGSIDE if move.move_type == MoveType.CASTLE_KINGSIDE \
@@ -247,30 +243,30 @@ class Board:
                 self.boards.white ^= rook_swap | king_swap
                 # Kingside
                 if move.move_type == MoveType.CASTLE_KINGSIDE:
+                    self.mailbox[squares.e1] = Piece.EMPTY
                     self.mailbox[squares.f1] = Piece.W_ROOK
                     self.mailbox[squares.g1] = Piece.W_KING
                     self.mailbox[squares.h1] = Piece.EMPTY
-                    self.mailbox[squares.e1] = Piece.EMPTY
                 # Queenside
                 elif move.move_type == MoveType.CASTLE_QUEENSIDE:
-                    self.mailbox[squares.d1] = Piece.W_ROOK
-                    self.mailbox[squares.c1] = Piece.W_KING
                     self.mailbox[squares.a1] = Piece.EMPTY
+                    self.mailbox[squares.c1] = Piece.W_KING
+                    self.mailbox[squares.d1] = Piece.W_ROOK
                     self.mailbox[squares.e1] = Piece.EMPTY
             elif self.turn == Side.BLACK:
                 self.boards.black ^= rook_swap | king_swap
                 # Kingside
                 if move.move_type == MoveType.CASTLE_KINGSIDE:
-                    self.mailbox[squares.f1] = Piece.B_ROOK
-                    self.mailbox[squares.g1] = Piece.B_KING
-                    self.mailbox[squares.h1] = Piece.EMPTY
-                    self.mailbox[squares.e1] = Piece.EMPTY
+                    self.mailbox[squares.e8] = Piece.EMPTY
+                    self.mailbox[squares.f8] = Piece.B_ROOK
+                    self.mailbox[squares.g8] = Piece.B_KING
+                    self.mailbox[squares.h8] = Piece.EMPTY
                 # Queenside
                 elif move.move_type == MoveType.CASTLE_QUEENSIDE:
-                    self.mailbox[squares.d1] = Piece.B_ROOK
-                    self.mailbox[squares.c1] = Piece.B_KING
-                    self.mailbox[squares.a1] = Piece.EMPTY
-                    self.mailbox[squares.e1] = Piece.EMPTY
+                    self.mailbox[squares.a8] = Piece.EMPTY
+                    self.mailbox[squares.c8] = Piece.B_KING
+                    self.mailbox[squares.d8] = Piece.B_ROOK
+                    self.mailbox[squares.e8] = Piece.EMPTY
             # Remove castling rights for this side
             self.castle_rights &= \
                 BLACK_CASTLE_RIGHTS if self.turn == Side.WHITE else WHITE_CASTLE_RIGHTS
@@ -382,7 +378,6 @@ class Board:
         properties: PositionProperties = self.history.pop()
         self.game_state = properties.game_state
         self.turn = properties.turn
-        self.boards.duck = properties.duck
         self.castle_rights = properties.castle_rights
         self.en_passant = properties.en_passant
         self.zbr = properties.zbr
@@ -391,10 +386,8 @@ class Board:
 
         # Special cases - duck moves, castling
         if move.move_type == MoveType.DUCK:
-            # Update the mailbox - the duck position was already updated above
-            self.mailbox[move.to_index] = Piece.EMPTY
-            if move.from_index:
-                self.mailbox[move.from_index] = Piece.DUCK
+            # Update the duck position
+            self.boards.duck = properties.duck
         elif move.move_type in (MoveType.CASTLE_KINGSIDE, MoveType.CASTLE_QUEENSIDE):
             castle_masks = \
                 CASTLING_KINGSIDE if move.move_type == MoveType.CASTLE_KINGSIDE \
@@ -413,30 +406,30 @@ class Board:
                 self.boards.white ^= rook_swap | king_swap
                 # Kingside
                 if move.move_type == MoveType.CASTLE_KINGSIDE:
+                    self.mailbox[squares.e1] = Piece.W_KING
                     self.mailbox[squares.f1] = Piece.EMPTY
                     self.mailbox[squares.g1] = Piece.EMPTY
                     self.mailbox[squares.h1] = Piece.W_ROOK
-                    self.mailbox[squares.e1] = Piece.W_KING
                 # Queenside
                 elif move.move_type == MoveType.CASTLE_QUEENSIDE:
-                    self.mailbox[squares.d1] = Piece.EMPTY
-                    self.mailbox[squares.c1] = Piece.EMPTY
                     self.mailbox[squares.a1] = Piece.W_ROOK
+                    self.mailbox[squares.c1] = Piece.EMPTY
+                    self.mailbox[squares.d1] = Piece.EMPTY
                     self.mailbox[squares.e1] = Piece.W_KING
 
             elif self.turn == Side.BLACK:
                 self.boards.black ^= rook_swap | king_swap
                 # Kingside
                 if move.move_type == MoveType.CASTLE_KINGSIDE:
+                    self.mailbox[squares.e8] = Piece.B_KING
                     self.mailbox[squares.f8] = Piece.EMPTY
                     self.mailbox[squares.g8] = Piece.EMPTY
                     self.mailbox[squares.h8] = Piece.B_ROOK
-                    self.mailbox[squares.e8] = Piece.B_KING
                 # Queenside
                 elif move.move_type == MoveType.CASTLE_QUEENSIDE:
-                    self.mailbox[squares.d8] = Piece.EMPTY
-                    self.mailbox[squares.c8] = Piece.EMPTY
                     self.mailbox[squares.a8] = Piece.B_ROOK
+                    self.mailbox[squares.c8] = Piece.EMPTY
+                    self.mailbox[squares.d8] = Piece.EMPTY
                     self.mailbox[squares.e8] = Piece.B_KING
 
         # Normal moves
@@ -490,11 +483,29 @@ class Board:
         self.boards.occupied = self.boards.white | self.boards.black | self.boards.duck
         self.zbr = properties.zbr
 
+    def recalculate_mailbox(self):
+        """ Returns a freshly calculated mailbox representation
+            of the board state.
+        """
+        result = [Piece.EMPTY] * 64
+        for piece, board in self.boards.pieces[Side.WHITE].items():
+            for square in utils.get_squares(board):
+                result[square] = piece | Side.WHITE
+
+        for piece, board in self.boards.pieces[Side.BLACK].items():
+            for square in utils.get_squares(board):
+                result[square] = piece | Side.BLACK
+        
+        return result
+
     def __str__(self):
+        state = [p for p in self.mailbox]
+        if self.boards.duck:
+            state[utils.get_squares(self.boards.duck)[0]] = Piece.DUCK
         result = ""
-        for s in range(len(self.mailbox), 0, -8):
+        for s in range(len(state), 0, -8):
             result += f"{s//8}|" \
-                + ''.join([pieces.symbols[p] for p in self.mailbox[s-8:s]]) \
+                + ''.join([pieces.symbols[p] for p in state[s-8:s]]) \
                 + '\n'
         result += " +--------\n  ABCDEFGH"
         return result

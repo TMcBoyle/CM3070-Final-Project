@@ -1,7 +1,6 @@
 from game_manager import GameManager
 from agent import Agent
 from goose import Goose
-from swan import Swan
 from timeit import timeit
 
 import cProfile as cpr
