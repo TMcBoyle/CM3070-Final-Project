@@ -34,7 +34,7 @@ class Goose(Agent):
         self.stats = Stats()
         self.transpositions = {}
 
-    def evaluate(board: Board):
+    def evaluate(board: Board, **kwargs: dict):
         white = board.boards.pieces[Side.WHITE]
         black = board.boards.pieces[Side.BLACK]
         
@@ -71,8 +71,8 @@ class Goose(Agent):
                     break
         self.board.make_move(move)
         
-    def search(self):
+    def search(self, depth: int=2):
         self.eval_side = self.board.turn
-        result = alpha_beta(self.board, self.current, Goose.evaluate)
+        result = alpha_beta(self.board, self.current, depth, Goose.evaluate)
 
         return (self.current.score, result[0], result[1])

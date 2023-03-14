@@ -27,4 +27,4 @@ class TestPerformance(unittest.TestCase):
         board = Board()
         root = Node()
 
-        alpha_beta(board, root, Goose.evaluate)
+        alpha_beta(board, root, 4, Goose.evaluate)

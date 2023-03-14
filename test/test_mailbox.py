@@ -1,13 +1,18 @@
 """ Mailbox unit tests """
 import unittest
-from chess.board import Board
+from chess.board import Board, GameState
 from chess.moves import Move, MoveType
 from chess.pieces import Piece, PieceType
 from chess.sides import Side
 from chess.consts import *
 from chess.squares import *
 
+from random import Random, choice
+
 class TestMailbox(unittest.TestCase):
+    def setUp(self):
+        self.rng = Random(22285472)
+
     def test_quiet_move(self):
         board = Board()
         move = Move.from_string("b1c3", MoveType.QUIET)
@@ -95,9 +100,10 @@ class TestMailbox(unittest.TestCase):
         self.assertEqual(board.mailbox[move.to_index], Piece.B_ROOK)
 
     def test_castle_kingside_move(self):
-        board = Board.from_fen_string("r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1")
+        board = Board.from_fen_string("r1bqk2r/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1")
         move = Move.from_string("O-O", MoveType.CASTLE_KINGSIDE)
 
+        # White
         board.make_move(move)
 
         self.assertEqual(board.mailbox[squares.e1], Piece.EMPTY)
@@ -112,10 +118,29 @@ class TestMailbox(unittest.TestCase):
         self.assertEqual(board.mailbox[squares.g1], Piece.EMPTY)
         self.assertEqual(board.mailbox[squares.h1], Piece.W_ROOK)
 
+        # Black
+        board.skip_move()
+        board.skip_move()
+
+        board.make_move(move)
+
+        self.assertEqual(board.mailbox[squares.e8], Piece.EMPTY)
+        self.assertEqual(board.mailbox[squares.f8], Piece.B_ROOK)
+        self.assertEqual(board.mailbox[squares.g8], Piece.B_KING)
+        self.assertEqual(board.mailbox[squares.h8], Piece.EMPTY)
+
+        board.unmake_move()
+
+        self.assertEqual(board.mailbox[squares.e8], Piece.B_KING)
+        self.assertEqual(board.mailbox[squares.f8], Piece.EMPTY)
+        self.assertEqual(board.mailbox[squares.g8], Piece.EMPTY)
+        self.assertEqual(board.mailbox[squares.h8], Piece.B_ROOK)
+
     def test_castle_queenside_move(self):
-        board = Board.from_fen_string("rnbqkb1r/pp2pppp/2p2n2/3p4/3P1B2/2N5/PPPQPPPP/R3KBNR w KQkq - 0 1")
+        board = Board.from_fen_string("r3kb1r/pp2pppp/2p2n2/3p4/3P1B2/2N5/PPPQPPPP/R3KBNR w KQkq - 0 1")
         move = Move.from_string("O-O-O", MoveType.CASTLE_QUEENSIDE)
 
+        # White
         board.make_move(move)
 
         self.assertEqual(board.mailbox[squares.a1], Piece.EMPTY)
@@ -131,3 +156,37 @@ class TestMailbox(unittest.TestCase):
         self.assertEqual(board.mailbox[squares.c1], Piece.EMPTY)
         self.assertEqual(board.mailbox[squares.d1], Piece.EMPTY)
         self.assertEqual(board.mailbox[squares.e1], Piece.W_KING)
+
+        # Black
+        board.skip_move()
+        board.skip_move()
+
+        board.make_move(move)
+
+        self.assertEqual(board.mailbox[squares.a8], Piece.EMPTY)
+        self.assertEqual(board.mailbox[squares.b8], Piece.EMPTY)
+        self.assertEqual(board.mailbox[squares.c8], Piece.B_KING)
+        self.assertEqual(board.mailbox[squares.d8], Piece.B_ROOK)
+        self.assertEqual(board.mailbox[squares.e8], Piece.EMPTY)
+
+        board.unmake_move()
+
+        self.assertEqual(board.mailbox[squares.a8], Piece.B_ROOK)
+        self.assertEqual(board.mailbox[squares.b8], Piece.EMPTY)
+        self.assertEqual(board.mailbox[squares.c8], Piece.EMPTY)
+        self.assertEqual(board.mailbox[squares.d8], Piece.EMPTY)
+        self.assertEqual(board.mailbox[squares.e8], Piece.B_KING)
+
+    def test_mailbox_integrity(self):
+        for _ in range(1_000):
+            board = Board()
+            ply = 0
+            while board.game_state == GameState.ONGOING:
+                ply += 1
+                legal_moves = board.generate_moves()
+                board.make_move(self.rng.choice(legal_moves))
+                
+                current = board.mailbox
+                theoretical = board.recalculate_mailbox()
+
+                self.assertListEqual(current, theoretical)

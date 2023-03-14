@@ -129,6 +129,6 @@ CASTLING_QUEENSIDE = {
         "KING_SQUARES": (squares.e8, squares.c8),
         "ROOK_SQUARES": (squares.a8, squares.d8),
         PieceType.KING: (FILE_E | FILE_C) & RANK_8,
-        PieceType.ROOK: (FILE_F | FILE_H) & RANK_8
+        PieceType.ROOK: (FILE_A | FILE_D) & RANK_8
     }
 }

@@ -294,7 +294,7 @@ class Board:
                 self.en_passant = consts.EMPTY
 
             # If an unmoved rook or king was moved, update castle rights
-            if move.piece == PieceType.ROOK and (to_mask & INIT_CASTLE_RIGHTS):
+            if move.piece == PieceType.ROOK and (from_mask & INIT_CASTLE_RIGHTS):
                 self.castle_rights &= utils.invert(from_mask)
             elif move.piece == PieceType.KING:
                 self.castle_rights &= \
@@ -316,6 +316,8 @@ class Board:
 
                 else:
                     properties.capture = self.mailbox[move.to_index]
+                    if properties.capture == Piece.EMPTY:
+                        print("Oh no...")
                     target_type = PieceType(properties.capture & PIECE_MASK)
                     self.boards.pieces[opposing_side(self.turn)][target_type] ^= to_mask
                     

@@ -54,10 +54,10 @@ def minimax(board: Board, node: Node, eval_fn: callable, depth: int=1) -> Move:
 
     return (best_score, best_move, duck_move)
 
-def alpha_beta(board: Board, node: Node, eval_fn: callable) -> tuple[Move, Move]:
+def alpha_beta(board: Board, node: Node, depth: int, eval_fn: callable, **eval_args) -> tuple[Move, Move]:
     def __alpha_beta_recursive(current: Node, alpha: float, beta: float, depth: int):
         if depth <= 0:
-            current.score = eval_fn(board)
+            current.score = eval_fn(board, **eval_args)
             return current.score
         
         # Expand the current node if it hasn't already been
@@ -91,7 +91,7 @@ def alpha_beta(board: Board, node: Node, eval_fn: callable) -> tuple[Move, Move]
         
         board.make_move(child.move)
         board.skip_move()
-        child.score = __alpha_beta_recursive(child, -infinity, infinity, 2)
+        child.score = __alpha_beta_recursive(child, -infinity, infinity, depth)
         board.unmake_move()
 
         if child.score > best_score:
