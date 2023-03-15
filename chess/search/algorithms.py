@@ -91,12 +91,14 @@ def alpha_beta(board: Board, node: Node, depth: int, eval_fn: callable, **eval_a
         
         board.make_move(child.move)
         board.skip_move()
-        child.score = __alpha_beta_recursive(child, -infinity, infinity, depth)
+        child.score = __alpha_beta_recursive(child, -infinity, infinity, depth - 1)
         board.unmake_move()
 
         if child.score > best_score:
             best_move = child.move
             best_score = child.score
+
+    node.score = best_score
 
     board.make_move(best_move)
     duck_move = random.choice(board.generate_moves())

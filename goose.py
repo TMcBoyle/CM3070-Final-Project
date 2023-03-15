@@ -45,14 +45,13 @@ class Goose(Agent):
         queen_diff  = white[PieceType.QUEEN].bit_count()  - black[PieceType.QUEEN].bit_count()
         king_diff   = white[PieceType.KING].bit_count()   - black[PieceType.KING].bit_count()
 
-        multiplier = 1 if board.turn == Side.BLACK else -1
         score = 0
-        score += pawn_diff   * Goose.EVAL_PAWN_VALUE   * multiplier 
-        score += knight_diff * Goose.EVAL_KNIGHT_VALUE * multiplier 
-        score += bishop_diff * Goose.EVAL_BISHOP_VALUE * multiplier 
-        score += rook_diff   * Goose.EVAL_ROOK_VALUE   * multiplier 
-        score += queen_diff  * Goose.EVAL_QUEEN_VALUE  * multiplier 
-        score += king_diff   * Goose.EVAL_KING_VALUE   * multiplier
+        score += pawn_diff   * Goose.EVAL_PAWN_VALUE 
+        score += knight_diff * Goose.EVAL_KNIGHT_VALUE 
+        score += bishop_diff * Goose.EVAL_BISHOP_VALUE 
+        score += rook_diff   * Goose.EVAL_ROOK_VALUE 
+        score += queen_diff  * Goose.EVAL_QUEEN_VALUE 
+        score += king_diff   * Goose.EVAL_KING_VALUE
 
         return score
 

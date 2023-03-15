@@ -284,15 +284,6 @@ class Board:
             # Move the piece
             self.boards.pieces[self.turn][move.piece] ^= from_mask | to_mask
 
-            # Update en passant if needed
-            if move.move_type == MoveType.DOUBLE_PAWN:
-                ep_square = \
-                    move.to_index + utils.Direction.SOUTH if self.turn == Side.WHITE \
-                    else move.to_index + utils.Direction.NORTH
-                self.en_passant = squares.masks[ep_square]
-            else:
-                self.en_passant = consts.EMPTY
-
             # If an unmoved rook or king was moved, update castle rights
             if move.piece == PieceType.ROOK and (from_mask & INIT_CASTLE_RIGHTS):
                 self.castle_rights &= utils.invert(from_mask)
@@ -316,8 +307,9 @@ class Board:
 
                 else:
                     properties.capture = self.mailbox[move.to_index]
-                    if properties.capture == Piece.EMPTY:
-                        print("Oh no...")
+                    if properties.capture == 0:
+                        pass
+                    
                     target_type = PieceType(properties.capture & PIECE_MASK)
                     self.boards.pieces[opposing_side(self.turn)][target_type] ^= to_mask
                     
@@ -327,8 +319,8 @@ class Board:
 
             # Check for promotions
             if move.promotion:
-                self.boards.pieces[self.turn][move.piece] ^= to_mask
-                self.boards.pieces[self.turn][move.promotion] ^= to_mask
+                self.boards.pieces[self.turn][move.piece]     &= utils.invert(to_mask)
+                self.boards.pieces[self.turn][move.promotion] |= to_mask
 
             # Update aggregate boards
             if self.turn == Side.WHITE:
@@ -350,12 +342,21 @@ class Board:
             final_piece = move.piece if not move.promotion else move.promotion
             self.mailbox[move.to_index] = Piece(self.turn | final_piece)
             self.mailbox[move.from_index] = Piece.EMPTY
-        
+
         # Update history
         self.history.append(properties)
 
-        # Update occupied board and Zobrist hash
+        # Update occupied board, en passant and Zobrist hash
         self.boards.occupied = self.boards.white | self.boards.black | self.boards.duck
+
+        if move.move_type == MoveType.DOUBLE_PAWN:
+            ep_square = \
+                move.to_index + utils.Direction.SOUTH if self.turn == Side.WHITE \
+                else move.to_index + utils.Direction.NORTH
+            self.en_passant = squares.masks[ep_square]
+        else:
+            self.en_passant = consts.EMPTY
+        
         self.zbr = zbr_update(
             self.zbr,
             (self.history[-1], properties),

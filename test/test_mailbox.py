@@ -180,9 +180,7 @@ class TestMailbox(unittest.TestCase):
     def test_mailbox_integrity(self):
         for _ in range(1_000):
             board = Board()
-            ply = 0
             while board.game_state == GameState.ONGOING:
-                ply += 1
                 legal_moves = board.generate_moves()
                 board.make_move(self.rng.choice(legal_moves))
                 
@@ -190,3 +188,19 @@ class TestMailbox(unittest.TestCase):
                 theoretical = board.recalculate_mailbox()
 
                 self.assertListEqual(current, theoretical)
+
+    def test_mailbox_unmake_integrity(self):
+        for _ in range(1_000):
+            board = Board()
+            stack = []
+            while board.game_state == GameState.ONGOING:
+                legal_moves = board.generate_moves()
+                board.make_move(self.rng.choice(legal_moves))
+                board.skip_move()
+                
+                stack.append(board.recalculate_mailbox())
+
+            while stack:
+                current = stack.pop()
+                self.assertListEqual(board.mailbox, current)
+                board.unmake_move()

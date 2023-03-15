@@ -8,8 +8,8 @@ import cProfile as cpr
 import pstats as ps
 
 def main():
-    gm = GameManager(Goose, Agent, output="outcome", save_games=True, random_order=True)
-    gm.start(100)
+    gm = GameManager(Goose, Swan, output="verbose", save_games=True, random_order=True)
+    gm.start(1)
 
 if __name__ == "__main__":
     p = cpr.run('main()', './profiling')

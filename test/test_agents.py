@@ -12,16 +12,19 @@ import random
 
 class TestAgents(unittest.TestCase):
     def test_random_agent(self):
-        agent = Agent()
-        board = Board()
-        while board.game_state == GameState.ONGOING:
-            moves = agent.get_next_move()
-            
-            agent.play_move(moves[1])
-            agent.play_move(moves[2])
+        # Capture promotion - not removing pawn from pawn bitboard
+        # Also not removing original piece properly?
+        for _ in range(10_000):
+            agent = Agent()
+            board = Board()
+            while board.game_state == GameState.ONGOING:
+                moves = agent.get_next_move()
+                
+                agent.play_move(moves[1])
+                agent.play_move(moves[2])
 
-            board.make_move(moves[1])
-            board.make_move(moves[2])
+                board.make_move(moves[1])
+                board.make_move(moves[2])
 
     def test_traditional_agent(self):
         agent = Goose()
