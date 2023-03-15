@@ -29,6 +29,8 @@ def minimax(board: Board, node: Node, eval_fn: callable, depth: int=1) -> Move:
         return best_score
 
     legal_moves = board.generate_moves()
+    if not legal_moves:
+        return (None, None)
     if not node.children:
         node.expand(legal_moves)
 
@@ -55,9 +57,11 @@ def minimax(board: Board, node: Node, eval_fn: callable, depth: int=1) -> Move:
     return (best_score, best_move, duck_move)
 
 def alpha_beta(board: Board, node: Node, depth: int, eval_fn: callable, **eval_args) -> tuple[Move, Move]:
+    score_multiplier = 1 if board.turn == Side.WHITE else -1
+
     def __alpha_beta_recursive(current: Node, alpha: float, beta: float, depth: int):
         if depth <= 0:
-            current.score = eval_fn(board, **eval_args)
+            current.score = eval_fn(board, **eval_args) * score_multiplier
             return current.score
         
         # Expand the current node if it hasn't already been
@@ -79,6 +83,8 @@ def alpha_beta(board: Board, node: Node, depth: int, eval_fn: callable, **eval_a
         return alpha
         
     legal_moves = board.generate_moves()
+    if not legal_moves:
+        return (None, None)
     if not node.children:
         node.expand(legal_moves)
 

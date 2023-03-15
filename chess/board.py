@@ -208,6 +208,9 @@ class Board:
         moves += king_moves   (pieces[PieceType.KING],   occupation, allies | duck)
         moves += castling     (occupation, self.castle_rights, self.turn)
 
+        if not moves:
+            self.game_state = GameState.STALEMATE
+            return
         return moves
 
     def make_move(self, move: Move):
