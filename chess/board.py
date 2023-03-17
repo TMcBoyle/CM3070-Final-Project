@@ -104,9 +104,63 @@ class Board:
             )
         ]
 
-    def to_fen_string(string: str) -> str:
+    def to_fen_string(self) -> str:
         """ Builds a FEN-style string from the current board state """
-        pass
+        result = ""
+        blank_count = 0
+        mailbox_reshaped = [self.mailbox[n-8:n] for n in range(64, 0, -8)]
+        
+        # Pieces
+        for rank in mailbox_reshaped:
+            for piece in rank:
+                if piece == Piece.EMPTY:
+                    blank_count += 1
+                else:
+                    if blank_count > 0:
+                        result += str(blank_count)
+                        blank_count = 0
+                    result += pieces.symbols[piece]
+        
+            if blank_count > 0:
+                result += str(blank_count)
+                blank_count = 0
+            result += "/"
+        result = result.strip("/")
+        result += " "
+
+        # Turn
+        if self.turn == Side.WHITE:
+            result += "w"
+        elif self.turn == Side.WHITE_DUCK:
+            result += "w@"
+        elif self.turn == Side.BLACK:
+            result += "b"
+        elif self.turn == Side.BLACK_DUCK:
+            result += "b@"
+        result += " "
+
+        # Castling Rights
+        if self.castle_rights == EMPTY:
+            result += "-"
+        else:
+            if self.castle_rights & squares.masks[squares.h1]:
+                result += "K"
+            if self.castle_rights & squares.masks[squares.a1]:
+                result += "Q"
+            if self.castle_rights & squares.masks[squares.a8]:
+                result += "k"
+            if self.castle_rights & squares.masks[squares.a8]:
+                result += "q"
+        result += " "
+
+        # En passant
+        if self.en_passant == EMPTY:
+            result += "-"
+        else:
+            ep_index = utils.ls1b_index(self.en_passant)
+            result += squares.labels[ep_index]
+
+        return result
 
     def from_fen_string(string: str) -> "Board":
         """ Creates a board from a FEN-style string """
