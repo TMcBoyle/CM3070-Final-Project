@@ -24,7 +24,7 @@ class MoveType(IntEnum):
     CASTLE_KINGSIDE   = 0b_0001
     CASTLE_QUEENSIDE  = 0b_0010
     DUCK              = 0b10000
-    MANUAL = 0b110000
+    MANUAL = 0b100000
 
 # Move class
 class Move:
@@ -66,8 +66,10 @@ class Move:
                 result.to_index = squares.labels.index(label_a)
         elif move == "O-O":
             result.move_type = MoveType.CASTLE_KINGSIDE
+            result.piece = pieces.PieceType.KING
         elif move == "O-O-O":
             result.move_type = MoveType.CASTLE_QUEENSIDE
+            result.piece = pieces.PieceType.KING
         elif re.match("^([abcdefgh][1-8]){2}$", move):
             from_label = move[0:2]
             to_label = move[2:4]
@@ -485,9 +487,9 @@ def castling(occupation: int, rights: int, turn: sides.Side):
     kingside_blockers  = occupation & consts.CASTLING_KINGSIDE [turn]["BLOCKERS"]
 
     if rights & consts.FILE_H and not kingside_blockers:
-        castle_moves.append(Move(MoveType.CASTLE_KINGSIDE))
+        castle_moves.append(Move(MoveType.CASTLE_KINGSIDE, pieces.PieceType.KING))
     if rights & consts.FILE_A and not queenside_blockers:
-        castle_moves.append(Move(MoveType.CASTLE_QUEENSIDE))
+        castle_moves.append(Move(MoveType.CASTLE_QUEENSIDE, pieces.PieceType.KING))
     
     return castle_moves
 

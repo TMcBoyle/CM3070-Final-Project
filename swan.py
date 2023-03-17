@@ -21,13 +21,6 @@ def bitboard_to_list(board: int):
     ])
 
 class Swan(Agent):
-    EVAL_PAWN_VALUE   = 1
-    EVAL_KNIGHT_VALUE = 3
-    EVAL_BISHOP_VALUE = 3.5
-    EVAL_ROOK_VALUE   = 5
-    EVAL_QUEEN_VALUE  = 9
-    EVAL_KING_VALUE   = 100_000
-
     def __init__(self, model_path: str=None):
         self.board:     Board = Board()
         self.eval_side: Side  = None
@@ -60,6 +53,7 @@ class Swan(Agent):
         """
         agent = Swan(model_path)
 
+        saved_positions = []
         for _ in range(n):
             board = Board()
             while board.game_state == GameState.ONGOING:

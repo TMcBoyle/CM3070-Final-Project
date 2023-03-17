@@ -80,6 +80,14 @@ def get_squares(board: int):
 
     return indices
 
+def ls1b_index(board: int):
+    """ Returns the square index of the least significant 1-bit
+        in a bitboard, or None if there are none.
+    """
+    if board == consts.EMPTY:
+        return None
+    return ((board & -board) - 1).bit_count()
+
 # Invert a bitboard
 def invert(board: int):
     """ Inverts a bitboard (i.e., changes all ones to zeros
