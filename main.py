@@ -8,11 +8,9 @@ import cProfile as cpr
 import pstats as ps
 
 def main():
-    gm = GameManager(Goose, Swan, output="outcome", save_games=True, random_order=True)
-    gm.start(100)
+    # Swan.train_iterative("models/swan", "models/swan_trained", 10, 30)
+    gm = GameManager(Swan("models/swan_trained_gen9"), Agent(), "game", False, True)
+    gm.play_games(100)
 
 if __name__ == "__main__":
-    p = cpr.run('main()', './profiling')
-    s = ps.Stats("./profiling")
-    s.sort_stats(ps.SortKey.TIME)
-    s.print_stats(20)
+    main()

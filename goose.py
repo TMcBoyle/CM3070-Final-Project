@@ -55,6 +55,12 @@ class Goose(Agent):
 
         return score
 
+    def reset(self):
+        self.board: Board = Board()
+        self.current: Node  = Node()
+        self.stats = Stats()
+        self.transpositions = {}
+
     def get_next_move(self):
         return self.search()
 
@@ -75,3 +81,7 @@ class Goose(Agent):
         result = alpha_beta(self.board, self.current, depth, Goose.evaluate)
 
         return (self.current.score, result[0], result[1])
+
+    def __str__(self):
+        return f"<Goose>"
+    

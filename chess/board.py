@@ -27,6 +27,8 @@ class PositionProperties:
     duck: int = None
     castle_rights: int = None
     en_passant: int = None
+    halfmove_clock: int = None
+    fullmove_count: int = None
     capture: PieceType = None
     move: Move = None
     zbr: int = None
@@ -74,6 +76,8 @@ class Board:
         self.turn = Side.WHITE
         self.castle_rights = INIT_CASTLE_RIGHTS
         self.en_passant = EMPTY
+        self.halfmove_clock = 0
+        self.fullmove_count = 0
         self.game_state = GameState.ONGOING
 
         self.mailbox = [
@@ -98,6 +102,8 @@ class Board:
                 duck=self.boards.duck,
                 castle_rights=self.castle_rights,
                 en_passant=self.en_passant,
+                halfmove_clock=self.halfmove_clock,
+                fullmove_count=self.fullmove_count,
                 capture=Piece.EMPTY,
                 move=None,
                 zbr=self.zbr
@@ -160,6 +166,9 @@ class Board:
             ep_index = utils.ls1b_index(self.en_passant)
             result += squares.labels[ep_index]
 
+        # Move counts
+        result += f" {self.halfmove_clock} {self.fullmove_count}"
+
         return result
 
     def from_fen_string(string: str) -> "Board":
@@ -169,6 +178,8 @@ class Board:
         turn = fields[1]
         castle_rights = fields[2]
         en_passant = fields[3]
+        halfmove_clock = int(fields[4])
+        fullmove_count = int(fields[5])
 
         board = Board()
         board.mailbox = [Piece.EMPTY] * 64
@@ -220,6 +231,10 @@ class Board:
         if en_passant != "-":
             board.en_passant = squares.masks[squares.labels.index(en_passant)]
 
+        # Set move counts
+        board.halfmove_clock = halfmove_clock
+        board.fullmove_count = fullmove_count
+
         # Set aggregate bitboards
         board.boards.white = EMPTY
         for bitboard in board.boards.pieces[Side.WHITE].values():
@@ -240,9 +255,12 @@ class Board:
             self.game_state = GameState.BLACK_WINS
         elif self.boards.pieces[Side.BLACK][PieceType.KING] == consts.EMPTY:
             self.game_state = GameState.WHITE_WINS
+        elif self.halfmove_clock >= 50 or len(self.generate_moves()) == 0:
+            self.game_state = GameState.STALEMATE
 
     def skip_move(self):
-        """ Advanced the turn order without making a move. En passant state is preserved.
+        """ Advanced the turn order without making a move. En passant state is preserved,
+            move counts aren't updated.
         """
         previous = self.turn
         self.turn = sides.next_turn(self.turn)
@@ -279,8 +297,6 @@ class Board:
         moves += king_moves   (pieces[PieceType.KING],   occupation, allies | duck)
         moves += castling     (occupation, self.castle_rights, self.turn)
 
-        if not moves:
-            self.game_state = GameState.STALEMATE
         return moves
 
     def __move_piece(self, from_index: int, to_index: int, piece: PieceType):
@@ -369,6 +385,8 @@ class Board:
             duck=self.boards.duck,
             castle_rights=self.castle_rights,
             en_passant=self.en_passant,
+            halfmove_clock=self.halfmove_clock,
+            fullmove_count=self.fullmove_count,
             capture=Piece.EMPTY,
             move=move,
             zbr=self.zbr
@@ -485,7 +503,13 @@ class Board:
         )
         self.history.append(properties)
 
-        # Update occupied board, turn and game state
+        # Update move counts, occupied board, turn and game state
+        if move.piece == PieceType.PAWN or (move.move_type & MoveType.CAPTURE):
+            self.halfmove_clock = 0
+        else:
+            self.halfmove_clock += 1
+        if self.turn == Side.BLACK_DUCK:
+            self.fullmove_count += 1
         self.boards.occupied = self.boards.white | self.boards.black | self.boards.duck
         self.turn = next_turn(self.turn)
         self.update_game_state()
@@ -504,6 +528,8 @@ class Board:
         self.turn = properties.turn
         self.castle_rights = properties.castle_rights
         self.en_passant = properties.en_passant
+        self.halfmove_clock = properties.halfmove_clock
+        self.fullmove_count = properties.fullmove_count
         self.zbr = properties.zbr
 
         move: Move = properties.move

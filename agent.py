@@ -5,6 +5,9 @@ class Agent:
     def __init__(self):
         self.board = Board()
 
+    def reset(self):
+        self.board = Board()
+
     def get_next_move(self):
         legal_moves = self.board.generate_moves()
         if legal_moves:
@@ -21,3 +24,6 @@ class Agent:
 
     def play_move(self, move):
         self.board.make_move(move)
+
+    def __str__(self):
+        return f"<Agent>"

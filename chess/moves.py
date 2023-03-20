@@ -116,9 +116,9 @@ class Move:
         return f"<chess.moves.Move: " \
                f"from_index={self.from_index}, " \
                f"to_index={self.to_index}, " \
-               f"move_type={self.move_type}, " \
-               f"piece={self.piece}, " \
-               f"promotion={self.promotion}, " \
+               f"move_type={self.move_type._name_}, " \
+               f"piece={self.piece._name_}, " \
+               f"promotion={self.promotion._name_}, " \
                f"str={self.__str__()}>"
 
     def __str__(self):
@@ -129,7 +129,7 @@ class Move:
         elif self.move_type == MoveType.DUCK:
             return f"@{squares.labels[self.to_index]}"
         elif self.move_type & MoveType.PROMOTION:
-            return f"{squares.labels[self.from_index]}{squares.labels[self.to_index]}={self.promotion}"
+            return f"{squares.labels[self.from_index]}{squares.labels[self.to_index]}={self.promotion._name_}"
         else:
             return f"{squares.labels[self.from_index]}{squares.labels[self.to_index]}"
 

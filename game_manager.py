@@ -6,103 +6,55 @@ from agent import Agent
 from random import randint
 
 class GameManager:
-    def __init__(self, player_one: type[Agent], player_two: type[Agent], output: str, save_games: bool=False, random_order: bool=True):
+    def __init__(self, player_one: Agent, player_two: Agent, output: str, save_games: bool=False, alternate_sides: bool=True):
         self.board: Board = None
         self.players = [player_one, player_two]
         self.output = output
         self.save_games = save_games
+        self.alternate_sides = alternate_sides
 
-        self.white = None
-        self.black = None
-
-        if random_order:
-            self.order = randint(0, 1)
-        else:
-            self.order = 0
-    
-    def start(self, games=1):
-        scores = [0, 0]
-
-        for n in range(games):
-            moves = []
-            self.board = Board()
-
-            if self.players[self.order]:
-                self.white = self.players[self.order]()
-            if self.players[1 - self.order]:
-                self.black = self.players[1 - self.order]()
-
-            while self.board.game_state == GameState.ONGOING:
-                if self.output == "board":
-                    print(self.board)
-
-                moves.append(self.request_next_move())
-                self.update_board(moves[-1][1], moves[-1][2])
-
-                if self.output in ("board", "verbose"):
-                    print(f"{moves[-1][1]}{moves[-1][2]} was played (eval {moves[-1][0]}).")
-
-            if self.board.game_state == GameState.WHITE_WINS:
-                result = "White wins!"
-                scores[self.order] += 1
-
-            elif self.board.game_state == GameState.BLACK_WINS:
-                result = "Black wins!"
-                scores[1 - self.order] += 1
-
-            elif self.board.game_state == GameState.STALEMATE:
-                result = "Stalemate, that's quackers!"
-                scores[0] += 0.5
-                scores[1] += 0.5
-
-            self.order = 1 - self.order
-
-            if self.save_games:
-                with open(f'games/game{n}.txt', 'w') as f:
-                    for n, move in enumerate(moves):
-                        f.write(f"{n}. {move[1]}{move[2]} ({move[0]})\n")
-                    f.write(f"{result}")
-
-            if self.output in ("board", "verbose"):
-                print(f"Game over. {result}")
-
-        if self.output in ("verbose", "outcome"):
-            print(f"Match over. Final score: "\
-                  f"{self.players[0]} {scores[0]} - "\
-                  f"{self.players[1]} {scores[1]}")
-        pass
-
-    def update_board(self, move: Move, duck: Move):
-        """ Update the board and notify the opponent of the 
-            played move.
+    def play_games(self, games: int):
+        """ Plays a number of games between player_one and player_two.
         """
-        # Notify the agents which moves were played
-        self.white.play_move(move)
-        self.white.play_move(duck)
-        self.black.play_move(move)
-        self.black.play_move(duck)
+        score = [0, 0]
+        white_idx = 0
+        for n in range(games):
+            board = Board()
+            white = self.players[white_idx]
+            white.reset()
+            black = self.players[1 - white_idx]
+            black.reset()
+
+            current_player = white_idx
+            while board.game_state == GameState.ONGOING:
+                move = self.players[current_player].get_next_move()[1:]
+                board.make_move(move[0])
+                board.make_move(move[1])
+                white.play_move(move[0])
+                white.play_move(move[1])
+                black.play_move(move[0])
+                black.play_move(move[1])
+
+                if self.output == "move":
+                    print(f"{move[0]}{move[1]}")
+
+                current_player = 1 - current_player
+
+            if self.output in ("move", "game"):
+                print(f"Game {n} over: {board.game_state._name_}")
+
+            if board.game_state == GameState.WHITE_WINS:
+                score[white_idx] += 1
+            elif board.game_state == GameState.BLACK_WINS:
+                score[1 - white_idx] += 1
+            else:
+                score[0] += 0.5
+                score[1] += 0.5
+
+            if self.alternate_sides:
+                white_idx = 1 - white_idx
         
-        # Apply the moves to the main board
-        self.board.make_move(move)
-        self.board.make_move(duck)
+        if self.output in ("move", "game", "match"):
+            print(f"Match over: {self.players[0]}{score[0]}, {self.players[1]}{score[1]}")
 
-    def request_next_move(self):
-        if self.board.turn in (Side.WHITE, Side.WHITE_DUCK) and self.white:
-            return self.white.get_next_move()
-        elif self.board.turn in (Side.BLACK, Side.BLACK_DUCK) and self.black:
-            return self.black.get_next_move()
-        # A human player is standing in for one or both agents
-        else: 
-            legal_moves = self.board.generate_moves()
-            move = None
-            while move not in legal_moves:
-                move = Move.from_string(input("Enter a move: "))
-            self.board.make_move(move)
-
-            duck_moves = self.board.generate_moves()
-            duck = None
-            while duck not in duck_moves:
-                duck = Move.from_string(input("Place the duck: "))
-            self.board.unmake_move()
-            
-            return (None, move, duck)
+        return score
