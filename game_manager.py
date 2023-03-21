@@ -40,9 +40,6 @@ class GameManager:
 
                 current_player = 1 - current_player
 
-            if self.output in ("move", "game"):
-                print(f"Game {n} over: {board.game_state._name_}")
-
             if board.game_state == GameState.WHITE_WINS:
                 score[white_idx] += 1
             elif board.game_state == GameState.BLACK_WINS:
@@ -51,10 +48,13 @@ class GameManager:
                 score[0] += 0.5
                 score[1] += 0.5
 
+            if self.output in ("move", "game"):
+                print(f"Game {n} over: {board.game_state._name_}, Current score: {self.players[0]} {score[0]} - {self.players[1]} {score[1]}")
+                
             if self.alternate_sides:
                 white_idx = 1 - white_idx
         
         if self.output in ("move", "game", "match"):
-            print(f"Match over: {self.players[0]}{score[0]}, {self.players[1]}{score[1]}")
+            print(f"Match over: {self.players[0]} {score[0]} - {self.players[1]} {score[1]}")
 
         return score

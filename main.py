@@ -8,9 +8,9 @@ import cProfile as cpr
 import pstats as ps
 
 def main():
-    # Swan.train_iterative("models/swan", "models/swan_trained", 10, 30)
-    gm = GameManager(Swan("models/swan_trained_gen9"), Agent(), "game", False, True)
-    gm.play_games(100)
+    #Swan.train_iterative("models/swan_v2_gen9", "models/swan_v3", 10, 30)
+    gm = GameManager(Swan("models/swan_v3_gen9"), Swan("models/swan"), "game", False, True)
+    gm.play_games(1000)
 
 if __name__ == "__main__":
     main()
