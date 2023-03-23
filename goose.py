@@ -1,13 +1,14 @@
 """ 'Goose' - a chess engine using the traditional approach.
 """
 from chess.board import Board
-from chess.moves import Move, MoveType
+from chess.moves import Move, MoveType, KING_TEMPLATES
 from chess.sides import Side, opposing_side
 from chess.pieces import PieceType
 from chess.search.algorithms import alpha_beta
 
 from agent import Agent
 from chess import consts
+from chess.utils import ls1b_index
 from chess.search.node import Node
 
 import random
@@ -27,6 +28,8 @@ class Goose(Agent):
     EVAL_ROOK_VALUE   = 5
     EVAL_QUEEN_VALUE  = 9
     EVAL_KING_VALUE   = 100_000
+    EVAL_FREEDOM_VALUE = 0.1
+    EVAL_KING_SAFETY_VALUE = 0.1
 
     def __init__(self):
         self.board: Board = Board()
@@ -34,10 +37,10 @@ class Goose(Agent):
         self.stats = Stats()
         self.transpositions = {}
 
-    def evaluate(board: Board, **kwargs: dict):
+    def eval_material(board: Board):
         white = board.boards.pieces[Side.WHITE]
         black = board.boards.pieces[Side.BLACK]
-        
+
         pawn_diff   = white[PieceType.PAWN].bit_count()   - black[PieceType.PAWN].bit_count()
         knight_diff = white[PieceType.KNIGHT].bit_count() - black[PieceType.KNIGHT].bit_count()
         bishop_diff = white[PieceType.BISHOP].bit_count() - black[PieceType.BISHOP].bit_count()
@@ -45,13 +48,56 @@ class Goose(Agent):
         queen_diff  = white[PieceType.QUEEN].bit_count()  - black[PieceType.QUEEN].bit_count()
         king_diff   = white[PieceType.KING].bit_count()   - black[PieceType.KING].bit_count()
 
+        material_score = 0
+        material_score += pawn_diff   * Goose.EVAL_PAWN_VALUE 
+        material_score += knight_diff * Goose.EVAL_KNIGHT_VALUE 
+        material_score += bishop_diff * Goose.EVAL_BISHOP_VALUE 
+        material_score += rook_diff   * Goose.EVAL_ROOK_VALUE 
+        material_score += queen_diff  * Goose.EVAL_QUEEN_VALUE 
+        material_score += king_diff   * Goose.EVAL_KING_VALUE
+
+        return material_score
+
+    def eval_freedom(board: Board):
+        freedom_score = 0
+
+        original_side = board.turn
+        # White freedom
+        board.skip_move(Side.WHITE)
+        freedom_score += board.generate_moves(True) * Goose.EVAL_FREEDOM_VALUE
+        # Black freedom
+        board.skip_move(Side.BLACK)
+        freedom_score -= board.generate_moves(True) * Goose.EVAL_FREEDOM_VALUE
+        # Return board turn to original state
+        board.skip_move(original_side)
+
+        return freedom_score
+
+    def eval_king_safety(board: Board):
+        king_safety_score = 0
+
+        # White king safety
+        white_king = board.boards.pieces[Side.WHITE][PieceType.KING]
+        white_occupancy = board.boards.white
+        white_king_safety = \
+            (KING_TEMPLATES[ls1b_index(white_king)] & white_occupancy) * Goose.EVAL_KING_SAFETY_VALUE
+
+        # Black king safety
+        black_king = board.boards.pieces[Side.BLACK][PieceType.KING]
+        black_occupancy = board.boards.black
+        black_king_safety = \
+            (KING_TEMPLATES[ls1b_index(black_king)] & black_occupancy) * Goose.EVAL_KING_SAFETY_VALUE
+        
+        king_safety_score += white_king_safety - black_king_safety
+
+        return king_safety_score
+
+    def evaluate(board: Board, **kwargs: dict):
         score = 0
-        score += pawn_diff   * Goose.EVAL_PAWN_VALUE 
-        score += knight_diff * Goose.EVAL_KNIGHT_VALUE 
-        score += bishop_diff * Goose.EVAL_BISHOP_VALUE 
-        score += rook_diff   * Goose.EVAL_ROOK_VALUE 
-        score += queen_diff  * Goose.EVAL_QUEEN_VALUE 
-        score += king_diff   * Goose.EVAL_KING_VALUE
+        
+        score += Goose.eval_material(board)
+        score += Goose.eval_freedom(board)
+        score += Goose.eval_king_safety(board)
 
         return score
 

@@ -258,16 +258,24 @@ class Board:
         elif self.halfmove_clock >= 50 or len(self.generate_moves()) == 0:
             self.game_state = GameState.STALEMATE
 
-    def skip_move(self):
+    def skip_move(self, until: Side=None):
         """ Advanced the turn order without making a move. En passant state is preserved,
             move counts aren't updated.
         """
-        previous = self.turn
-        self.turn = sides.next_turn(self.turn)
-        self.zbr = zbr_update(self.zbr, (
-            PositionProperties(turn=previous, castle_rights=self.castle_rights, en_passant=self.en_passant),
-            PositionProperties(turn=self.turn, castle_rights=self.castle_rights, en_passant=self.en_passant)
-        ))
+        if until is None:
+            self.turn = sides.next_turn(self.turn)
+            self.zbr = zbr_update(self.zbr, (
+                PositionProperties(turn=previous, castle_rights=self.castle_rights, en_passant=self.en_passant),
+                PositionProperties(turn=self.turn, castle_rights=self.castle_rights, en_passant=self.en_passant)
+            ))
+        else:
+            while self.turn != until:
+                previous = self.turn
+                self.turn = sides.next_turn(self.turn)
+                self.zbr = zbr_update(self.zbr, (
+                    PositionProperties(turn=previous, castle_rights=self.castle_rights, en_passant=self.en_passant),
+                    PositionProperties(turn=self.turn, castle_rights=self.castle_rights, en_passant=self.en_passant)
+                ))
 
     def generate_moves(self, pseudo: bool=False):
         """ Returns a list of valid moves in the position. If
