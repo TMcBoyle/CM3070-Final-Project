@@ -19,7 +19,7 @@ def play(player_side: str, agent: Agent):
 
     while board.game_state == GameState.ONGOING:
         if board.turn in player_side:
-            move = input("Play a move (e.g., e2e4@g5):\n")
+            move = input("Your move:\n")
             piece_move = Move.from_string(move[:-3], MoveType.MANUAL)
             duck_move = Move.from_string(move[-3:], MoveType.DUCK)
         else:
