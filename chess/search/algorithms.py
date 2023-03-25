@@ -73,8 +73,9 @@ def alpha_beta(board: Board, node: Node, depth: int, eval_fn: callable, **eval_a
         for child in current.children:
             board.make_move(child.move)
             board.skip_move()
-            child.score = __alpha_beta_recursive(child, -beta, -alpha, depth - 1)
+            child.score = -__alpha_beta_recursive(child, -beta, -alpha, depth - 1)
             board.unmake_move()
+
 
             if child.score >= beta:
                 child.score = beta
@@ -99,7 +100,7 @@ def alpha_beta(board: Board, node: Node, depth: int, eval_fn: callable, **eval_a
         
         board.make_move(child.move)
         board.skip_move()
-        child.score = __alpha_beta_recursive(child, -infinity, infinity, depth - 1)
+        child.score = -__alpha_beta_recursive(child, -infinity, infinity, depth - 1)
         board.unmake_move()
 
         if child.score > best_score:
@@ -132,7 +133,7 @@ def alpha_beta_nn(board: Board, node: Node, depth: int, eval_fn: callable, **eva
         for child in current.children:
             board.make_move(child.move)
             board.skip_move()
-            child.score = __alpha_beta_recursive(child, -beta, -alpha, depth - 1)
+            child.score = 1 - __alpha_beta_recursive(child, 1 - beta, 1 - alpha, depth - 1)
             board.unmake_move()
 
             if child.score >= beta:
@@ -158,7 +159,7 @@ def alpha_beta_nn(board: Board, node: Node, depth: int, eval_fn: callable, **eva
         
         board.make_move(child.move)
         board.skip_move()
-        child.score = __alpha_beta_recursive(child, -infinity, infinity, depth - 1)
+        child.score = 1 - __alpha_beta_recursive(child, 0, 1, depth - 1)
         board.unmake_move()
 
         if child.score > best_score:

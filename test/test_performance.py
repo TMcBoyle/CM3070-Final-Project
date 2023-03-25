@@ -1,7 +1,7 @@
 """ Zobrist hashing unit tests """
 import unittest
 from chess.board import Board
-from goose import Goose
+from goose_v3 import Goose
 from chess.search.node import *
 from chess.search.algorithms import *
 from random import random

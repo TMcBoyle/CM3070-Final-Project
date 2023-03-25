@@ -263,6 +263,7 @@ class Board:
             move counts aren't updated.
         """
         if until is None:
+            previous = self.turn
             self.turn = sides.next_turn(self.turn)
             self.zbr = zbr_update(self.zbr, (
                 PositionProperties(turn=previous, castle_rights=self.castle_rights, en_passant=self.en_passant),

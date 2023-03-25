@@ -118,7 +118,7 @@ class Move:
                f"to_index={self.to_index}, " \
                f"move_type={self.move_type._name_}, " \
                f"piece={self.piece._name_}, " \
-               f"promotion={self.promotion._name_}, " \
+               f"promotion={self.promotion}, " \
                f"str={self.__str__()}>"
 
     def __str__(self):

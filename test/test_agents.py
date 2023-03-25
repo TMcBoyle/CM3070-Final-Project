@@ -2,7 +2,7 @@
 import unittest
 from chess.board import Board, GameState
 from agent import Agent
-from goose import Goose
+from goose_v3 import Goose
 from swan import Swan
 from chess import utils
 from chess import squares

@@ -28,8 +28,8 @@ class Goose(Agent):
     EVAL_ROOK_VALUE   = 5
     EVAL_QUEEN_VALUE  = 9
     EVAL_KING_VALUE   = 100_000
-    EVAL_FREEDOM_VALUE = 0.1
-    EVAL_KING_SAFETY_VALUE = 0.1
+    EVAL_FREEDOM_VALUE = 0.01
+    EVAL_KING_SAFETY_VALUE = 1
 
     def __init__(self):
         self.board: Board = Board()
@@ -64,10 +64,10 @@ class Goose(Agent):
         original_side = board.turn
         # White freedom
         board.skip_move(Side.WHITE)
-        freedom_score += board.generate_moves(True) * Goose.EVAL_FREEDOM_VALUE
+        freedom_score += len(board.generate_moves(True)) * Goose.EVAL_FREEDOM_VALUE
         # Black freedom
         board.skip_move(Side.BLACK)
-        freedom_score -= board.generate_moves(True) * Goose.EVAL_FREEDOM_VALUE
+        freedom_score -= len(board.generate_moves(True)) * Goose.EVAL_FREEDOM_VALUE
         # Return board turn to original state
         board.skip_move(original_side)
 
@@ -79,14 +79,20 @@ class Goose(Agent):
         # White king safety
         white_king = board.boards.pieces[Side.WHITE][PieceType.KING]
         white_occupancy = board.boards.white
-        white_king_safety = \
-            (KING_TEMPLATES[ls1b_index(white_king)] & white_occupancy) * Goose.EVAL_KING_SAFETY_VALUE
+        if white_king != consts.EMPTY:
+            white_king_safety = \
+                (KING_TEMPLATES[ls1b_index(white_king)] & white_occupancy).bit_count() * Goose.EVAL_KING_SAFETY_VALUE
+        else:
+            white_king_safety = 0
 
         # Black king safety
         black_king = board.boards.pieces[Side.BLACK][PieceType.KING]
         black_occupancy = board.boards.black
-        black_king_safety = \
-            (KING_TEMPLATES[ls1b_index(black_king)] & black_occupancy) * Goose.EVAL_KING_SAFETY_VALUE
+        if black_king != consts.EMPTY:
+            black_king_safety = \
+                (KING_TEMPLATES[ls1b_index(black_king)] & black_occupancy).bit_count()  * Goose.EVAL_KING_SAFETY_VALUE
+        else:
+            black_king_safety = 0
         
         king_safety_score += white_king_safety - black_king_safety
 
@@ -108,7 +114,7 @@ class Goose(Agent):
         self.transpositions = {}
 
     def get_next_move(self):
-        return self.search()
+        return self.search(2)
 
     def play_move(self, move: Move):
         if move.move_type != MoveType.DUCK:
@@ -129,5 +135,4 @@ class Goose(Agent):
         return (self.current.score, result[0], result[1])
 
     def __str__(self):
-        return f"<Goose>"
-    
+        return f"<Goose v3>"
