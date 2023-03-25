@@ -387,6 +387,23 @@ class Board:
         """ Applies the provided move to the board.
             IMPORTANT: This method assumes a legal move is passed.
         """
+        # Work out the move type if needed
+        if move.move_type == MoveType.MANUAL:
+            if (self.mailbox[move.from_index] & PIECE_MASK) == PieceType.PAWN:
+                if utils.ls1b_index(self.en_passant) == move.to_index:
+                    move.move_type = MoveType.EN_PASSANT
+                elif move.promotion:
+                    if self.mailbox[move.to_index] != Piece.EMPTY:
+                        move.move_type = MoveType.CAPTURE_PROMOTION
+                    else:
+                        move.move_type = MoveType.PROMOTION
+                elif abs(move.from_index - move.to_index) == utils.Direction.NORTH * 2:
+                    move.move_type = MoveType.DOUBLE_PAWN
+            elif self.mailbox[move.to_index] != Piece.EMPTY:
+                move.move_type = MoveType.CAPTURE
+            else:
+                move.move_type = MoveType.QUIET
+
         # Build new position properties object
         properties = PositionProperties(
             game_state=self.game_state,

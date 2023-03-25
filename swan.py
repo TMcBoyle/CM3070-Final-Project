@@ -176,7 +176,7 @@ class Swan(Agent):
         self.current:   Node  = self.root
 
     def get_next_move(self):
-        return self.search(1)
+        return self.search(2)
 
     def play_move(self, move: Move):
         if move.move_type != MoveType.DUCK:

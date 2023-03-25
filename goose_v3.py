@@ -114,7 +114,7 @@ class Goose(Agent):
         self.transpositions = {}
 
     def get_next_move(self):
-        return self.search(2)
+        return self.search(3)
 
     def play_move(self, move: Move):
         if move.move_type != MoveType.DUCK:
