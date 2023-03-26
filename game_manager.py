@@ -25,7 +25,7 @@ class GameManager:
             for result in results.items():
                 file.write(f"{result}\n")        
 
-    def play_games(self, games: int, output: str, alternate_sides: bool=True):
+    def play_games(self, games: int, output: str, alternate_sides: bool=True, slow: bool=False):
         """ Plays a number of games between player_one and player_two.
         """
         score = [0, 0]
@@ -37,9 +37,16 @@ class GameManager:
             black = self.players[1 - white_idx]
             black.reset()
 
+            ply = 1
             current_player = white_idx
             while board.game_state == GameState.ONGOING:
                 move = self.players[current_player].get_next_move()[1:]
+
+                if output == "move":
+                    print(f"{ply}. {move[0]}{move[1]}")
+                    if board.turn == Side.BLACK:
+                        print("\n")
+
                 board.make_move(move[0])
                 board.make_move(move[1])
                 white.play_move(move[0])
@@ -47,10 +54,11 @@ class GameManager:
                 black.play_move(move[0])
                 black.play_move(move[1])
 
-                if output == "move":
-                    print(f"{move[0]}{move[1]}")
-
+                ply += 1
                 current_player = 1 - current_player
+
+                if slow:
+                    input("Press Enter to continue...")
 
             if board.game_state == GameState.WHITE_WINS:
                 score[white_idx] += 1

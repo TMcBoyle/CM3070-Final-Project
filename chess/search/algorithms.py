@@ -63,7 +63,7 @@ def alpha_beta(board: Board, node: Node, depth: int, eval_fn: callable, **eval_a
 
     def __alpha_beta_recursive(current: Node, alpha: float, beta: float, depth: int):
         if depth <= 0:
-            current.score = eval_fn(board, **eval_args) * score_multiplier
+            current.score = eval_fn(board, node=current, **eval_args) * score_multiplier
             return current.score
         
         # Expand the current node if it hasn't already been

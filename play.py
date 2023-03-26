@@ -18,10 +18,16 @@ def play(player_side: str, agent: Agent):
     agent.reset()
 
     while board.game_state == GameState.ONGOING:
+        legal_moves = board.generate_moves()
         if board.turn in player_side:
             move = input("Your move:\n")
             piece_move = Move.from_string(move[:-3], MoveType.MANUAL)
             duck_move = Move.from_string(move[-3:], MoveType.DUCK)
+
+            if piece_move not in legal_moves:
+                print("Illegal move, please try again. Legal moves: ")
+                print([str(m) for m in legal_moves])
+                continue
         else:
             move = agent.get_next_move()
             piece_move = move[1]

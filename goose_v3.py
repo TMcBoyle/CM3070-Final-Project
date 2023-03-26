@@ -58,20 +58,23 @@ class Goose(Agent):
 
         return material_score
 
-    def eval_freedom(board: Board):
+    def eval_freedom(board: Board, node: Node):
         freedom_score = 0
 
-        original_side = board.turn
-        # White freedom
-        board.skip_move(Side.WHITE)
-        freedom_score += len(board.generate_moves(True)) * Goose.EVAL_FREEDOM_VALUE
-        # Black freedom
-        board.skip_move(Side.BLACK)
-        freedom_score -= len(board.generate_moves(True)) * Goose.EVAL_FREEDOM_VALUE
-        # Return board turn to original state
-        board.skip_move(original_side)
+        if board.turn == Side.WHITE:
+            freedom_score -= len(node.parent.children)
+            try:
+                freedom_score += len(node.parent.parent.children)
+            except:
+                pass
+        elif board.turn == Side.BLACK:
+            freedom_score += len(node.parent.children)
+            try:
+                freedom_score -= len(node.parent.parent.children)
+            except:
+                pass
 
-        return freedom_score
+        return freedom_score * Goose.EVAL_FREEDOM_VALUE
 
     def eval_king_safety(board: Board):
         king_safety_score = 0
@@ -102,7 +105,7 @@ class Goose(Agent):
         score = 0
         
         score += Goose.eval_material(board)
-        score += Goose.eval_freedom(board)
+        score += Goose.eval_freedom(board, kwargs['node'])
         score += Goose.eval_king_safety(board)
 
         return score
@@ -114,7 +117,7 @@ class Goose(Agent):
         self.transpositions = {}
 
     def get_next_move(self):
-        return self.search(3)
+        return self.search(2)
 
     def play_move(self, move: Move):
         if move.move_type != MoveType.DUCK:
